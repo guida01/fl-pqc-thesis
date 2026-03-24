@@ -7,7 +7,7 @@ from cryptography.hazmat.backends import default_backend
 
 class SignatureManager:
 
-    PQC_SCHEMES = ["Dilithium2", "Dilithium3", "Falcon-512", "SPHINCS+-SHA2-128s-simple"]
+    PQC_SCHEMES = ["ML-DSA-44", "ML-DSA-65", "ML-DSA-87", "Falcon-512", "SPHINCS+-SHA2-128s-simple"]
     CLASSICAL_SCHEMES = ["RSA-2048", "ECDSA-256"]
 
     def __init__(self, scheme: str):

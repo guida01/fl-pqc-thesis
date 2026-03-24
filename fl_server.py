@@ -21,6 +21,8 @@ class SignedFedAvg(FedAvg):
         super().__init__(**kwargs)
         self.scheme = scheme
         self.results_path = results_path
+        self.fit_metrics_aggregation_fn = lambda metrics: {}
+        self.evaluate_metrics_aggregation_fn = lambda metrics: {}
 
         with open(results_path, "w", newline="") as f:
             writer = csv.writer(f)

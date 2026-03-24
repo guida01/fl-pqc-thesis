@@ -3,6 +3,8 @@ import torch
 import torch.nn as nn
 import numpy as np
 import io
+from torch.utils.data import DataLoader, Subset
+from torchvision import datasets, transforms
 from signature_manager import SignatureManager
 
 class SimpleCNN(nn.Module):
@@ -76,3 +78,14 @@ class SignedFlowerClient(fl.client.NumPyClient):
     def evaluate(self, parameters, config):
         set_weights(self.model, parameters)
         return 0.0, len(self.train_loader.dataset), {"accuracy": 0.0}
+
+
+def load_mnist_splits(num_clients):
+    transform = transforms.Compose([transforms.ToTensor()])
+    dataset = datasets.MNIST("./data", train=True, download=True, transform=transform)
+    split_size = len(dataset) // num_clients
+    loaders = []
+    for i in range(num_clients):
+        subset = Subset(dataset, range(i * split_size, (i + 1) * split_size))
+        loaders.append(DataLoader(subset, batch_size=32, shuffle=True))
+    return loaders
