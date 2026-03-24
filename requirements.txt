@@ -1,0 +1,9 @@
+flwr==1.8.0
+torch
+torchvision
+numpy
+pandas
+matplotlib
+scikit-learn
+liboqs-python
+cryptography
