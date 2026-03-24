@@ -1,6 +1,6 @@
 # Federated Learning with Post-Quantum Digital Signatures
 
-MSc thesis — Faculdade de Ciências da Universidade do Porto, 2026.
+MSc thesis - Faculdade de Ciências da Universidade do Porto, 2026.
 
 ## Setup
 ```bash
