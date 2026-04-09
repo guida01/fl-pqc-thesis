@@ -7,12 +7,15 @@ from cryptography.hazmat.backends import default_backend
 
 class SignatureManager:
     
+    # NIST-standardized PQC schemes - handled via liboqs
     PQC_SCHEMES = [
         "ML-DSA-44",
         "ML-DSA-65", 
         "ML-DSA-87",
         "Falcon-padded-512",
         "SLH_DSA_PURE_SHA2_128S"]
+    
+    # Classical schemes — baseline for comparison
     CLASSICAL_SCHEMES = ["RSA-2048", "ECDSA-256"]
 
     def __init__(self, scheme: str):
@@ -24,10 +27,12 @@ class SignatureManager:
         start = time.perf_counter()
 
         if self.scheme in self.PQC_SCHEMES:
+            # generate_keypair() returns the public key and stores the private key internally
             self._signer = oqs.Signature(self.scheme)
             self.public_key_bytes = self._signer.generate_keypair()
         
         elif self.scheme == "RSA-2048":
+            # exponent 65537 is standard — Fermat prime, efficient and secure
             self._private_key = rsa.generate_private_key(
                 public_exponent=65537, key_size=2048, backend=default_backend()
             )
@@ -38,6 +43,7 @@ class SignatureManager:
             )
 
         elif self.scheme == "ECDSA-256":
+            # SECP256R1 = P-256 curve, equivalent to 128 bits of classical security
             self._private_key = ec.generate_private_key(ec.SECP256R1(), default_backend())
             self._public_key = self._private_key.public_key()
             self.public_key_bytes = self._public_key.public_bytes(
@@ -51,6 +57,7 @@ class SignatureManager:
         self.keygen_time = time.perf_counter() - start
 
     def sign(self, data: bytes):
+        # sign the SHA-256 digest, not the raw data — normalizes input size across schemes
         digest = hashlib.sha256(data).digest()
         start = time.perf_counter()
 
@@ -58,9 +65,11 @@ class SignatureManager:
             signature = self._signer.sign(digest)
 
         elif self.scheme == "RSA-2048":
+            # PKCS1v15 padding — signs the digest directly
             signature = self._private_key.sign(digest, padding.PKCS1v15(), hashes.SHA256())
 
         elif self.scheme == "ECDSA-256":
+            # produces variable-length signature (DER encoding)
             signature = self._private_key.sign(digest, ec.ECDSA(hashes.SHA256()))
 
         sign_time = time.perf_counter() - start
@@ -71,6 +80,7 @@ class SignatureManager:
         start = time.perf_counter()
 
         if self.scheme in self.PQC_SCHEMES:
+            # new instance without keypair — for verification only
             verifier = oqs.Signature(self.scheme)
             is_valid = verifier.verify(digest, signature, public_key_bytes)
 
@@ -81,6 +91,7 @@ class SignatureManager:
                 pub.verify(signature, digest, padding.PKCS1v15(), hashes.SHA256())
                 is_valid = True
             except Exception:
+                # cryptography library raises an exception instead of returning False
                 is_valid = False
 
         elif self.scheme == "ECDSA-256":
