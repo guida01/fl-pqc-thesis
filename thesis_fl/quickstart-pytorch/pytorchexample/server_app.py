@@ -6,34 +6,44 @@ from flwr.app import ArrayRecord, ConfigRecord, Context, RecordDict
 from flwr.serverapp import Grid, ServerApp
 from flwr.serverapp.strategy import FedAvg
 
-from pytorchexample.task import SimpleCNN, weights_to_bytes
+from pytorchexample.task import CIFAR10CNN, weights_to_bytes
 from pytorchexample.signature_manager import SignatureManager
 
 RESULTS_DIR = "results"
 app = ServerApp()
 
+_CSV_HEADER = [
+    "run", "round", "node_id", "scheme",
+    "keygen_time", "sign_time", "verify_time",
+    "train_time", "train_loss",
+    "payload_size", "sig_size", "pubkey_size", "verified",
+]
+
 
 class SignedFedAvg(FedAvg):
-    """FedAvg with signature verification before aggregation."""
 
-    def __init__(self, scheme: str, results_path: str, **kwargs):
+    def __init__(self, scheme: str, results_path: str, run_number: int, **kwargs):
         super().__init__(**kwargs)
-        self.scheme = scheme
+        self.scheme      = scheme
         self.results_path = results_path
+        self.run_number  = run_number
 
         os.makedirs(RESULTS_DIR, exist_ok=True)
-        with open(results_path, "w", newline="") as f:
-            csv.writer(f).writerow([
-                "round", "node_id", "scheme",
-                "sign_time", "verify_time",
-                "sig_size", "pubkey_size", "verified"
-            ])
+        # run 1 always starts fresh; subsequent runs append
+        mode = "w" if run_number == 1 else "a"
+        with open(results_path, mode, newline="") as f:
+            if run_number == 1:
+                csv.writer(f).writerow(_CSV_HEADER)
 
     def aggregate_train(self, server_round, train_replies):
         valid_replies = []
 
         for reply in train_replies:
-            node_id    = reply.metadata.src_node_id
+            node_id = reply.metadata.src_node_id
+            if not reply.has_content():
+                print(f"  Node {node_id}: empty reply — skipping")
+                continue
+
             sig_record = reply.content["signature"]
             signature  = bytes.fromhex(sig_record["signature"])
             public_key = bytes.fromhex(sig_record["public_key"])
@@ -44,15 +54,16 @@ class SignedFedAvg(FedAvg):
                 payload, signature, public_key
             )
 
-            metrics = reply.content["metrics"]
+            m = reply.content["metrics"]
             print(f"  Node {node_id}: verified={is_valid} ({verify_time:.4f}s)")
 
             with open(self.results_path, "a", newline="") as f:
                 csv.writer(f).writerow([
-                    server_round, node_id, self.scheme,
-                    metrics["sign_time"], verify_time,
-                    metrics["sig_size"], metrics["pubkey_size"],
-                    is_valid
+                    self.run_number, server_round, node_id, self.scheme,
+                    m["keygen_time"], m["sign_time"], verify_time,
+                    m["train_time"], m["train_loss"],
+                    m["payload_size"], m["sig_size"], m["pubkey_size"],
+                    is_valid,
                 ])
 
             if is_valid:
@@ -67,20 +78,22 @@ class SignedFedAvg(FedAvg):
 def main(grid: Grid, context: Context) -> None:
     scheme     = context.run_config["scheme"]
     num_rounds = context.run_config["num-server-rounds"]
+    run_number = int(context.run_config.get("run-number", 1))
     results_path = os.path.join(RESULTS_DIR, f"{scheme.replace('/', '_')}.csv")
 
     strategy = SignedFedAvg(
         scheme=scheme,
         results_path=results_path,
+        run_number=run_number,
         fraction_train=1.0,
         fraction_evaluate=0.0,
-        min_train_nodes=2,
-        min_available_nodes=2,
+        min_train_nodes=5,
+        min_available_nodes=5,
     )
 
     strategy.start(
         grid=grid,
-        initial_arrays=ArrayRecord(SimpleCNN().state_dict()),
+        initial_arrays=ArrayRecord(CIFAR10CNN().state_dict()),
         train_config=ConfigRecord({"lr": context.run_config["learning-rate"]}),
         num_rounds=num_rounds,
     )

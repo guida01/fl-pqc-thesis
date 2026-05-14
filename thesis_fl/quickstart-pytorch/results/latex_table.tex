@@ -1,0 +1,18 @@
+\begin{table}[ht]
+\centering
+\caption{Performance of digital signature schemes in FL (mean ± std, 20 measurements)}
+\label{tab:signature-performance}
+\begin{tabular}{lrrrr}
+\toprule
+Scheme & Sign (ms) & Verify (ms) & Sig (B) & PK (B) \\
+\midrule
+RSA\nobreakdash-2048 & 1.310 $\pm$ 0.626 & 0.294 $\pm$ 0.752 & 256 & 294 \\
+ECDSA\nobreakdash-256 & 0.175 $\pm$ 0.117 & 0.302 $\pm$ 0.505 & 71 & 91 \\
+ML\nobreakdash-DSA\nobreakdash-44 & 0.167 $\pm$ 0.113 & 0.071 $\pm$ 0.062 & 2420 & 1312 \\
+ML\nobreakdash-DSA\nobreakdash-65 & 0.238 $\pm$ 0.087 & 0.104 $\pm$ 0.046 & 3309 & 1952 \\
+ML\nobreakdash-DSA\nobreakdash-87 & 0.302 $\pm$ 0.117 & 0.144 $\pm$ 0.055 & 4627 & 2592 \\
+Falcon\nobreakdash-512 & 0.393 $\pm$ 0.064 & 0.149 $\pm$ 0.078 & 666 & 897 \\
+SLH\nobreakdash-DSA & 676.069 $\pm$ 26.707 & 0.759 $\pm$ 0.102 & 7856 & 32 \\
+\bottomrule
+\end{tabular}
+\end{table}
