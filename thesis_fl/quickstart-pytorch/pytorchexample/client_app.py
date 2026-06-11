@@ -34,7 +34,14 @@ def train_fn(msg: Message, context: Context):
     sig_mgr     = SignatureManager(scheme)
     keygen_time = time.perf_counter() - t0
 
-    payload              = weights_to_bytes(model.state_dict())
+    server_round = int(msg.content["config"]["server-round"])  # injected by FedAvg each round
+    node_id      = msg.metadata.dst_node_id                    # this client's identity
+
+    payload = (
+        weights_to_bytes(model.state_dict())   # the update being committed
+        + server_round.to_bytes(4, "big")      # prevents replay across rounds
+        + str(node_id).encode("utf-8")         # prevents impersonation by another client
+    )
     signature, sign_time = sig_mgr.sign(payload)
 
     content = RecordDict({

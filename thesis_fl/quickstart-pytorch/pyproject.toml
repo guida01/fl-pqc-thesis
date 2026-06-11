@@ -32,10 +32,11 @@ serverapp = "pytorchexample.server_app:app"
 clientapp = "pytorchexample.client_app:app"
 
 [tool.flwr.app.config]
-num-server-rounds = 50
+num-server-rounds = 30
 fraction-evaluate = 0.0
 local-epochs = 1
 learning-rate = 0.1
 batch-size = 32
 scheme = "ECDSA-256"
 run-number = 5
+results-dir = "/home/mmiranda/fl_pqc_thesis/thesis_fl/quickstart-pytorch/results"

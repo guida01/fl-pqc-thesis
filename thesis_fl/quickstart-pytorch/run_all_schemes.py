@@ -18,7 +18,7 @@ SCHEMES = [
 
 N_RUNS         = 5
 NUM_SUPERNODES = 5
-NUM_ROUNDS     = 50   # must match num-server-rounds in pyproject.toml
+NUM_ROUNDS     = 30   # must match num-server-rounds in pyproject.toml
 
 PYPROJECT    = "pyproject.toml"
 RESULTS_DIR  = "results"

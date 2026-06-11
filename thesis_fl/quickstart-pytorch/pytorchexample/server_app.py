@@ -8,8 +8,6 @@ from flwr.serverapp.strategy import FedAvg
 
 from pytorchexample.task import CIFAR10CNN, weights_to_bytes
 from pytorchexample.signature_manager import SignatureManager
-
-RESULTS_DIR = "results"
 app = ServerApp()
 
 _CSV_HEADER = [
@@ -28,7 +26,6 @@ class SignedFedAvg(FedAvg):
         self.results_path = results_path
         self.run_number  = run_number
 
-        os.makedirs(RESULTS_DIR, exist_ok=True)
         # run 1 always starts fresh; subsequent runs append
         mode = "w" if run_number == 1 else "a"
         with open(results_path, mode, newline="") as f:
@@ -48,7 +45,12 @@ class SignedFedAvg(FedAvg):
             signature  = bytes.fromhex(sig_record["signature"])
             public_key = bytes.fromhex(sig_record["public_key"])
             state_dict = reply.content["arrays"].to_torch_state_dict()
-            payload    = weights_to_bytes(state_dict)
+
+            payload = (
+                weights_to_bytes(state_dict)           # the update being verified
+                + server_round.to_bytes(4, "big")      # must match what client signed
+                + str(node_id).encode("utf-8")         # must match what client signed
+            )
 
             is_valid, verify_time = SignatureManager(self.scheme).verify(
                 payload, signature, public_key
@@ -76,10 +78,12 @@ class SignedFedAvg(FedAvg):
 
 @app.main()
 def main(grid: Grid, context: Context) -> None:
-    scheme     = context.run_config["scheme"]
-    num_rounds = context.run_config["num-server-rounds"]
-    run_number = int(context.run_config.get("run-number", 1))
-    results_path = os.path.join(RESULTS_DIR, f"{scheme.replace('/', '_')}.csv")
+    scheme      = context.run_config["scheme"]
+    num_rounds  = context.run_config["num-server-rounds"]
+    run_number  = int(context.run_config.get("run-number", 1))
+    results_dir = str(context.run_config["results-dir"])
+    os.makedirs(results_dir, exist_ok=True)
+    results_path = os.path.join(results_dir, f"{scheme.replace('/', '_')}.csv")
 
     strategy = SignedFedAvg(
         scheme=scheme,
