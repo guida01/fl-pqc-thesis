@@ -5,3 +5,5 @@ data/
 *.fab
 *.pt
 .flwr/
+.ray/
+run_log.txt
