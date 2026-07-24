@@ -1,6 +1,6 @@
 """
 FL-PQC thesis — results analysis
-Data: 7 schemes × 5 runs × 50 rounds × 25 nodes (1250 rows/scheme)
+Data: 8 schemes × 5 runs × 30 rounds × 5 clients = 750 rows/scheme
 Columns: run, round, node_id, scheme, keygen_time, sign_time, verify_time,
          train_time, train_loss, payload_size, sig_size, pubkey_size, verified
 """
@@ -26,38 +26,42 @@ PLOTS_DIR   = os.path.join(RESULTS_DIR, "plots")
 os.makedirs(PLOTS_DIR, exist_ok=True)
 
 SCHEMES = [
+    "no_signature",
     "RSA-2048",
     "ECDSA-256",
     "ML-DSA-44",
     "ML-DSA-65",
     "ML-DSA-87",
     "Falcon-padded-512",
-    "SLH_DSA_PURE_SHA2_128S",
+    "SPHINCS+-SHA2-128s-simple",
 ]
 
 LABELS = {
-    "RSA-2048":               "RSA-2048",
-    "ECDSA-256":              "ECDSA-256",
-    "ML-DSA-44":              "ML-DSA-44",
-    "ML-DSA-65":              "ML-DSA-65",
-    "ML-DSA-87":              "ML-DSA-87",
-    "Falcon-padded-512":      "Falcon-512",
-    "SLH_DSA_PURE_SHA2_128S": "SLH-DSA",
+    "no_signature":              "No Sig.",
+    "RSA-2048":                  "RSA-2048",
+    "ECDSA-256":                 "ECDSA-256",
+    "ML-DSA-44":                 "ML-DSA-44",
+    "ML-DSA-65":                 "ML-DSA-65",
+    "ML-DSA-87":                 "ML-DSA-87",
+    "Falcon-padded-512":         "Falcon-512",
+    "SPHINCS+-SHA2-128s-simple": "SPHINCS+",
 }
 
 COLORS = {
-    "RSA-2048":               "#888780",
-    "ECDSA-256":              "#5F5E5A",
-    "ML-DSA-44":              "#1D9E75",
-    "ML-DSA-65":              "#0F6E56",
-    "ML-DSA-87":              "#085041",
-    "Falcon-padded-512":      "#185FA5",
-    "SLH_DSA_PURE_SHA2_128S": "#BA7517",
+    "no_signature":              "#222222",
+    "RSA-2048":                  "#888780",
+    "ECDSA-256":                 "#5F5E5A",
+    "ML-DSA-44":                 "#1D9E75",
+    "ML-DSA-65":                 "#0F6E56",
+    "ML-DSA-87":                 "#085041",
+    "Falcon-padded-512":         "#185FA5",
+    "SPHINCS+-SHA2-128s-simple": "#BA7517",
 }
 
 CLASSICAL = {"RSA-2048", "ECDSA-256"}
 
 LEGEND_PATCHES = [
+    mpatches.Patch(color="#222222", label="Baseline (no signature)"),
     mpatches.Patch(color="#888780", label="Classical"),
     mpatches.Patch(color="#1D9E75", label="PQC (NIST)"),
 ]
@@ -96,9 +100,9 @@ def aggregate(df):
         verify_std   =("verify_time",  "std"),
         train_mean   =("train_time",   "mean"),
         train_std    =("train_time",   "std"),
-        sig_size     =("sig_size",     "first"),   # constant per scheme
-        pubkey_size  =("pubkey_size",  "first"),
-        payload_size =("payload_size", "first"),
+        sig_size     =("sig_size",     "mean"),    # mean handles ECDSA variable-length DER
+        pubkey_size  =("pubkey_size",  "mean"),
+        payload_size =("payload_size", "mean"),
         n            =("sign_time",    "count"),
     ).reset_index()
 
@@ -316,23 +320,25 @@ def print_summary(stats):
               f"{row['keygen_mean']:>8.3f}±{row['keygen_std']:.3f}  "
               f"{row['sign_mean']:>7.3f}±{row['sign_std']:.3f}  "
               f"{row['verify_mean']:>7.3f}±{row['verify_std']:.3f}  "
-              f"{row['sig_size']:>7.0f}  "
-              f"{row['pubkey_size']:>5.0f}  "
+              f"{row['sig_size']:>7.1f}  "
+              f"{row['pubkey_size']:>5.1f}  "
               f"{row['overhead_pct']:>6.2f}%  "
               f"{row['comm_kb_per_round']:>8.1f} KB")
     print("=" * w)
 
-    fastest  = stats.loc[stats["sign_mean"].idxmin()]
-    slowest  = stats.loc[stats["sign_mean"].idxmax()]
-    smallest = stats.loc[stats["sig_size"].idxmin()]
-    largest  = stats.loc[stats["sig_size"].idxmax()]
+    # Exclude no_signature from comparisons that don't apply to it
+    signed = stats[stats["scheme"] != "no_signature"]
+    fastest  = signed.loc[signed["sign_mean"].idxmin()]
+    slowest  = signed.loc[signed["sign_mean"].idxmax()]
+    smallest = signed.loc[signed["sig_size"].idxmin()]
+    largest  = signed.loc[signed["sig_size"].idxmax()]
     ratio    = slowest["sign_mean"] / fastest["sign_mean"]
-    best_ovh = stats.loc[stats["overhead_pct"].idxmin()]
+    best_ovh = signed.loc[signed["overhead_pct"].idxmin()]
 
     print(f"\nFastest sign:       {LABELS[fastest['scheme']]}  ({fastest['sign_mean']:.3f} ms)")
     print(f"Slowest sign:       {LABELS[slowest['scheme']]}  ({slowest['sign_mean']:.3f} ms, {ratio:.0f}× slower)")
-    print(f"Smallest sig:       {LABELS[smallest['scheme']]}  ({smallest['sig_size']:.0f} B)")
-    print(f"Largest sig:        {LABELS[largest['scheme']]}  ({largest['sig_size']:.0f} B)")
+    print(f"Smallest sig:       {LABELS[smallest['scheme']]}  ({smallest['sig_size']:.1f} B)")
+    print(f"Largest sig:        {LABELS[largest['scheme']]}  ({largest['sig_size']:.1f} B)")
     print(f"Lowest FL overhead: {LABELS[best_ovh['scheme']]}  ({best_ovh['overhead_pct']:.2f}%)")
 
 

@@ -5,42 +5,32 @@ import subprocess
 import time
 import os
 import re
-import random
-import numpy as np
-import torch
-
-SEED = 42
-random.seed(SEED)
-np.random.seed(SEED)
-torch.manual_seed(SEED)
 
 SCHEMES = [
-    "no_signature",
     "ML-DSA-44",
     "ML-DSA-65",
     "ML-DSA-87",
     "Falcon-padded-512",
-    "SPHINCS+-SHA2-128s-simple",
+    "SLH_DSA_PURE_SHA2_128S",
     "RSA-2048",
     "ECDSA-256",
 ]
 
 N_RUNS         = 5
-NUM_SUPERNODES = 5
+NUM_SUPERNODES = 10
 NUM_ROUNDS     = 30   # must match num-server-rounds in pyproject.toml
 
 PYPROJECT    = "pyproject.toml"
-RESULTS_DIR  = "results"
+RESULTS_DIR  = "results_10clients"
 MAX_WAIT_SEC = 1800   # 30 min per run (10 clients × 50 rounds)
 
 
 def update_config(scheme: str, run_num: int):
-    """Update scheme, run-number, and num-supernodes in pyproject.toml."""
+    """Update scheme and run-number in pyproject.toml."""
     with open(PYPROJECT) as f:
         content = f.read()
     content = re.sub(r'scheme\s*=\s*"[^"]*"', f'scheme = "{scheme}"', content)
     content = re.sub(r'run-number\s*=\s*\d+', f'run-number = {run_num}', content)
-    content = re.sub(r'num-supernodes\s*=\s*\d+', f'num-supernodes = {NUM_SUPERNODES}', content)
     with open(PYPROJECT, "w") as f:
         f.write(content)
 
