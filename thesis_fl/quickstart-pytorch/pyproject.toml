@@ -39,4 +39,5 @@ learning-rate = 0.1
 batch-size = 32
 scheme = "ECDSA-256"
 run-number = 5
+num-supernodes = 5
 results-dir = "/home/mmiranda/fl_pqc_thesis/thesis_fl/quickstart-pytorch/results"

@@ -1,7 +1,7 @@
 import oqs
 import time 
 import hashlib
-from cryptography.hazmat.primitives.asymmetric import rsa, ec, padding
+from cryptography.hazmat.primitives.asymmetric import rsa, ec, padding, utils
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.backends import default_backend
 
@@ -10,10 +10,10 @@ class SignatureManager:
     # NIST-standardized PQC schemes - handled via liboqs
     PQC_SCHEMES = [
         "ML-DSA-44",
-        "ML-DSA-65", 
+        "ML-DSA-65",
         "ML-DSA-87",
         "Falcon-padded-512",
-        "SLH_DSA_PURE_SHA2_128S"]
+        "SPHINCS+-SHA2-128s-simple"]
     
     # Classical schemes — baseline for comparison
     CLASSICAL_SCHEMES = ["RSA-2048", "ECDSA-256"]
@@ -57,7 +57,7 @@ class SignatureManager:
         self.keygen_time = time.perf_counter() - start
 
     def sign(self, data: bytes):
-        # sign the SHA-256 digest, not the raw data — normalizes input size across schemes
+        # Pre-hash outside the timing window so only the crypto primitive is measured
         digest = hashlib.sha256(data).digest()
         start = time.perf_counter()
 
@@ -65,40 +65,44 @@ class SignatureManager:
             signature = self._signer.sign(digest)
 
         elif self.scheme == "RSA-2048":
-            # PKCS1v15 padding — signs the digest directly
-            signature = self._private_key.sign(digest, padding.PKCS1v15(), hashes.SHA256())
+            # Prehashed: library signs digest directly without re-hashing
+            signature = self._private_key.sign(
+                digest, padding.PKCS1v15(), utils.Prehashed(hashes.SHA256())
+            )
 
         elif self.scheme == "ECDSA-256":
-            # produces variable-length signature (DER encoding)
-            signature = self._private_key.sign(digest, ec.ECDSA(hashes.SHA256()))
+            signature = self._private_key.sign(
+                digest, ec.ECDSA(utils.Prehashed(hashes.SHA256()))
+            )
 
         sign_time = time.perf_counter() - start
         return signature, sign_time
 
     def verify(self, data: bytes, signature: bytes, public_key_bytes: bytes):
+        from cryptography.hazmat.primitives.serialization import load_der_public_key
         digest = hashlib.sha256(data).digest()
+
+        # Object setup outside timing window — only the verification primitive is measured
+        if self.scheme in self.PQC_SCHEMES:
+            verifier = oqs.Signature(self.scheme)
+        elif self.scheme in ("RSA-2048", "ECDSA-256"):
+            pub = load_der_public_key(public_key_bytes, backend=default_backend())
+
         start = time.perf_counter()
 
         if self.scheme in self.PQC_SCHEMES:
-            # new instance without keypair — for verification only
-            verifier = oqs.Signature(self.scheme)
             is_valid = verifier.verify(digest, signature, public_key_bytes)
 
         elif self.scheme == "RSA-2048":
-            from cryptography.hazmat.primitives.serialization import load_der_public_key
-            pub = load_der_public_key(public_key_bytes, backend=default_backend())
             try:
-                pub.verify(signature, digest, padding.PKCS1v15(), hashes.SHA256())
+                pub.verify(signature, digest, padding.PKCS1v15(), utils.Prehashed(hashes.SHA256()))
                 is_valid = True
             except Exception:
-                # cryptography library raises an exception instead of returning False
                 is_valid = False
 
         elif self.scheme == "ECDSA-256":
-            from cryptography.hazmat.primitives.serialization import load_der_public_key
-            pub = load_der_public_key(public_key_bytes, backend=default_backend())
             try:
-                pub.verify(signature, digest, ec.ECDSA(hashes.SHA256()))
+                pub.verify(signature, digest, ec.ECDSA(utils.Prehashed(hashes.SHA256())))
                 is_valid = True
             except Exception:
                 is_valid = False

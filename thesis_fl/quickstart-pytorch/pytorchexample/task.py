@@ -33,7 +33,7 @@ class CIFAR10CNN(nn.Module):
         return self.classifier(self.features(x).view(x.size(0), -1))
 
 
-def load_data(partition_id: int, num_partitions: int, batch_size: int) -> DataLoader:
+def load_data(partition_id: int, num_partitions: int, batch_size: int, run_number: int = 1) -> DataLoader:
     transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize(_CIFAR_MEAN, _CIFAR_STD),
@@ -41,7 +41,9 @@ def load_data(partition_id: int, num_partitions: int, batch_size: int) -> DataLo
     dataset = datasets.CIFAR10("./data", train=True, download=True, transform=transform)
     split   = len(dataset) // num_partitions
     subset  = Subset(dataset, range(partition_id * split, (partition_id + 1) * split))
-    return DataLoader(subset, batch_size=batch_size, shuffle=True)
+    g = torch.Generator()
+    g.manual_seed(42 + run_number)
+    return DataLoader(subset, batch_size=batch_size, shuffle=True, generator=g)
 
 
 def train(net, trainloader, epochs, lr, device) -> float:
@@ -57,6 +59,7 @@ def train(net, trainloader, epochs, lr, device) -> float:
             optimizer.zero_grad()
             loss = criterion(net(images.to(device)), labels.to(device))
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(net.parameters(), max_norm=1.0)
             optimizer.step()
             total_loss += loss.item()
             n_batches  += 1
