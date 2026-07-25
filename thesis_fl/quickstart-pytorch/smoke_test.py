@@ -41,7 +41,7 @@ def make_payload(weights_bytes: bytes, server_round: int, node_id: int) -> bytes
     return (
         weights_bytes
         + server_round.to_bytes(4, "big")
-        + str(node_id).encode("utf-8")
+        + node_id.to_bytes(8, "big")
     )
 
 

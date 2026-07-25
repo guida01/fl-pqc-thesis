@@ -50,7 +50,7 @@ def train_fn(msg: Message, context: Context):
         payload = (
             weights_to_bytes(model.state_dict())
             + server_round.to_bytes(4, "big")
-            + str(node_id).encode("utf-8")
+            + node_id.to_bytes(8, "big")
         )
         signature, sign_time = sig_mgr.sign(payload)
         public_key   = sig_mgr.public_key_bytes

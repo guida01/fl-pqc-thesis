@@ -56,7 +56,7 @@ class SignedFedAvg(FedAvg):
                 payload = (
                     weights_to_bytes(state_dict)
                     + server_round.to_bytes(4, "big")
-                    + str(node_id).encode("utf-8")
+                    + node_id.to_bytes(8, "big")
                 )
                 is_valid, verify_time = SignatureManager(self.scheme).verify(
                     payload, signature, public_key

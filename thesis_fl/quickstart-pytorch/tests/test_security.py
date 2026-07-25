@@ -12,7 +12,7 @@ server_app.py:56-60):
     payload = (
         weights_to_bytes(state_dict)
         + server_round.to_bytes(4, "big")
-        + str(node_id).encode("utf-8")
+        + node_id.to_bytes(8, "big")
     )
 
 using real CIFAR10CNN() weights, not random bytes.
@@ -36,7 +36,7 @@ def make_payload(state_dict, server_round: int, node_id: int) -> bytes:
     return (
         weights_to_bytes(state_dict)
         + server_round.to_bytes(4, "big")
-        + str(node_id).encode("utf-8")
+        + node_id.to_bytes(8, "big")
     )
 
 
