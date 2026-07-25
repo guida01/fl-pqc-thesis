@@ -58,6 +58,14 @@ def train_fn(msg: Message, context: Context):
         pubkey_size  = len(public_key)
         payload_size = float(len(payload))
 
+        # Explicit release of our reference to the private key, now that we've
+        # extracted everything we need (signature/public_key are plain bytes).
+        # Python offers no reliable way to zero out freed memory from pure
+        # Python code, so this is reference release, not secure erasure — the
+        # underlying key bytes may still linger in memory until the
+        # interpreter reuses that space.
+        del sig_mgr
+
     # Fault injection for integration testing: corrupt one byte of the
     # weights AFTER signing so the signature no longer matches what is
     # sent. Inert unless tamper-node-index matches this client's partition.
