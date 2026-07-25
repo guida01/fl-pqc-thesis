@@ -1,0 +1,17 @@
+scheme,field,value,count
+ECDSA-256,sig_size,70.0,180
+ECDSA-256,sig_size,71.0,378
+ECDSA-256,sig_size,72.0,192
+ECDSA-256,pubkey_size,91.0,750
+Falcon-padded-512,sig_size,666.0,750
+Falcon-padded-512,pubkey_size,897.0,750
+ML-DSA-44,sig_size,2420.0,750
+ML-DSA-44,pubkey_size,1312.0,750
+ML-DSA-65,sig_size,3309.0,750
+ML-DSA-65,pubkey_size,1952.0,750
+ML-DSA-87,sig_size,4627.0,750
+ML-DSA-87,pubkey_size,2592.0,750
+RSA-2048,sig_size,256.0,750
+RSA-2048,pubkey_size,294.0,750
+SPHINCS+-SHA2-128s-simple,sig_size,7856.0,750
+SPHINCS+-SHA2-128s-simple,pubkey_size,32.0,750

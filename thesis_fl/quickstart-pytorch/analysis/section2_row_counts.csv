@@ -1,0 +1,9 @@
+scheme,rows,expected
+ECDSA-256,750,750
+Falcon-padded-512,750,750
+ML-DSA-44,750,750
+ML-DSA-65,750,750
+ML-DSA-87,750,750
+RSA-2048,750,750
+SPHINCS+-SHA2-128s-simple,750,750
+no_signature,605,750
