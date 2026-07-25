@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
-"""Run all 7 signature schemes × N_RUNS times sequentially."""
+"""Run all 8 signature-scheme configs × N_RUNS times, scheme order
+randomized independently per run so per-scheme block position can't be
+confounded with thermal/frequency drift over the campaign's wall-clock
+duration. See results/execution_order.log for the exact order and
+timestamps of every run this script executes."""
 
 import subprocess
 import time
 import os
 import re
 import random
+import datetime
 import numpy as np
 import torch
 
@@ -29,9 +34,31 @@ N_RUNS         = 5
 NUM_SUPERNODES = 5
 NUM_ROUNDS     = 30   # must match num-server-rounds in pyproject.toml
 
-PYPROJECT    = "pyproject.toml"
-RESULTS_DIR  = "results"
-MAX_WAIT_SEC = 1800   # 30 min per run (10 clients × 50 rounds)
+PYPROJECT      = "pyproject.toml"
+RESULTS_DIR    = "results"
+EXECUTION_LOG  = os.path.join(RESULTS_DIR, "execution_order.log")
+MAX_WAIT_SEC   = 1800   # 30 min per run (10 clients × 50 rounds)
+
+
+def log_execution(message: str):
+    """Print and append a timestamped line to results/execution_order.log
+    — the audit trail of the actual order runs executed in, independent
+    of any (scheme, run) pairing convention."""
+    os.makedirs(RESULTS_DIR, exist_ok=True)
+    timestamp = datetime.datetime.now().isoformat(timespec="seconds")
+    line = f"{timestamp}  {message}"
+    print(line)
+    with open(EXECUTION_LOG, "a") as f:
+        f.write(line + "\n")
+
+
+def randomized_scheme_order(run_num: int) -> list:
+    """Shuffle SCHEMES for this run. Seeded off run_num (not the global
+    SEED) so the order is reproducible per run but differs across runs,
+    and doesn't depend on module-level RNG state."""
+    order = SCHEMES.copy()
+    random.Random(1000 + run_num).shuffle(order)
+    return order
 
 
 def update_config(scheme: str, run_num: int):
@@ -66,7 +93,7 @@ def wait_for_run(run_id: str) -> bool:
     return False
 
 
-def run_scheme(scheme: str, run_num: int):
+def run_scheme(scheme: str, run_num: int) -> bool:
     print(f"\n{'='*60}\n  {scheme}  —  run {run_num}/{N_RUNS}\n{'='*60}")
 
     subprocess.run(["ray", "stop", "--force"], capture_output=True)
@@ -82,17 +109,16 @@ def run_scheme(scheme: str, run_num: int):
 
     match = re.search(r"run (\d+)", output)
     if not match:
-        print("  Could not get run ID — skipping.")
+        log_execution(f"{scheme} run {run_num}: could not get run ID — skipping")
         print("  stdout:", result.stdout[:300])
         print("  stderr:", result.stderr[:300])
-        return
+        return False
 
     run_id = match.group(1)
-    print(f"  Run ID: {run_id}")
 
     success = wait_for_run(run_id)
-    status  = "✓ completed" if success else "✗ FAILED"
-    print(f"  {status}")
+    status  = "completed" if success else "FAILED"
+    log_execution(f"{scheme} run {run_num}: run_id={run_id} -> {status}")
 
     csv_path = os.path.join(RESULTS_DIR, f"{scheme.replace('/', '_')}.csv")
     if os.path.exists(csv_path):
@@ -102,6 +128,7 @@ def run_scheme(scheme: str, run_num: int):
         print(f"  CSV rows: {rows}  (expected ≤ {expected})")
 
     time.sleep(15)
+    return success
 
 
 if __name__ == "__main__":
@@ -109,10 +136,12 @@ if __name__ == "__main__":
 
     total = len(SCHEMES) * N_RUNS
     done  = 0
-    for scheme in SCHEMES:
-        for run_num in range(1, N_RUNS + 1):
+    for run_num in range(1, N_RUNS + 1):
+        order = randomized_scheme_order(run_num)
+        log_execution(f"run {run_num}: scheme order = {order}")
+        for scheme in order:
             done += 1
-            print(f"\n[{done}/{total}]", end="")
+            log_execution(f"[{done}/{total}] starting {scheme} run {run_num}")
             run_scheme(scheme, run_num)
 
     print("\n" + "=" * 60)
