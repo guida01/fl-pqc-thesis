@@ -11,13 +11,14 @@ import os
 import re
 import random
 import datetime
-import numpy as np
-import torch
 
-SEED = 42
-random.seed(SEED)
-np.random.seed(SEED)
-torch.manual_seed(SEED)
+# NOTE: this process only orchestrates `flwr run .` as subprocesses (see
+# run_scheme() below) — it never trains or signs anything itself. Seeding
+# random/numpy/torch here has no effect on those subprocesses' RNG state;
+# the seeds that actually matter (model init, DataLoader order, PQC/RSA/
+# ECDSA keygen) are set inside server_app.py:111 and task.py:45/_PARTITION_SEED,
+# which run in the subprocess. A previous version of this script seeded
+# random/numpy/torch at module level here — removed as dead code.
 
 SCHEMES = [
     "no_signature",
