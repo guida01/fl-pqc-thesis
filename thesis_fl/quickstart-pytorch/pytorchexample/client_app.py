@@ -20,6 +20,7 @@ def train_fn(msg: Message, context: Context):
     local_epochs   = context.run_config["local-epochs"]
     scheme         = context.run_config["scheme"]
     run_number     = int(context.run_config.get("run-number", 1))
+    tamper_node_index = int(context.run_config.get("tamper-node-index", -1))
 
     model = CIFAR10CNN()
     model.load_state_dict(msg.content["arrays"].to_torch_state_dict())
@@ -56,6 +57,15 @@ def train_fn(msg: Message, context: Context):
         sig_size     = len(signature)
         pubkey_size  = len(public_key)
         payload_size = float(len(payload))
+
+    # Fault injection for integration testing: corrupt one byte of the
+    # weights AFTER signing so the signature no longer matches what is
+    # sent. Inert unless tamper-node-index matches this client's partition.
+    if tamper_node_index == partition_id:
+        with torch.no_grad():
+            first_tensor = next(iter(model.state_dict().values()))
+            raw_bytes = first_tensor.reshape(-1)[:1].view(torch.uint8)
+            raw_bytes[0] ^= 0xFF
 
     content = RecordDict({
         "arrays": ArrayRecord(model.state_dict()),
