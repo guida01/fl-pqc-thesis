@@ -271,15 +271,22 @@ def section2_integrity(dfs):
 
     pd.DataFrame(missing_rows).to_csv(os.path.join(OUT_DIR, "section2_missing_rows.csv"), index=False)
 
-    # --- verified == True everywhere ---
-    print("\nColuna 'verified':")
-    all_verified = True
+    # --- sig_valid == True and has_nan == False everywhere ---
+    # (replaces the old single `verified` column — see task 4: verified was
+    # `is_valid and not has_nan`, conflating two distinct failure modes)
+    print("\nColunas 'sig_valid' / 'has_nan':")
+    all_sig_valid = True
+    any_has_nan = False
     for scheme, df in dfs.items():
-        n_false = int((~df["verified"]).sum())
-        if n_false > 0:
-            all_verified = False
-        print(f"  {scheme:30s} verified==False em {n_false} linhas")
-    print(f"  -> verified==True em TODAS as linhas de TODOS os esquemas: {all_verified}")
+        n_invalid = int((~df["sig_valid"]).sum())
+        n_nan = int(df["has_nan"].sum())
+        if n_invalid > 0:
+            all_sig_valid = False
+        if n_nan > 0:
+            any_has_nan = True
+        print(f"  {scheme:30s} sig_valid==False em {n_invalid} linhas, has_nan==True em {n_nan} linhas")
+    print(f"  -> sig_valid==True em TODAS as linhas de TODOS os esquemas: {all_sig_valid}")
+    print(f"  -> has_nan==True nalguma linha de algum esquema: {any_has_nan}")
 
     # --- NaN counts, all columns ---
     print("\nContagem de NaN por coluna (todas as colunas, todos os esquemas):")

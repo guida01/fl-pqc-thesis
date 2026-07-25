@@ -2,7 +2,9 @@
 pytorchexample/server_app.py:SignedFedAvg.aggregate_train.
 
 None of the 5855 rows currently in results/ ever exercise this branch: every
-recorded run had `verified == True` for every client, every round. This test
+recorded run had `sig_valid == True` for every client, every round (that
+CSV predates the sig_valid/has_nan split — it was written as a single
+`verified` column, but the underlying condition is the same). This test
 proves the branch actually rejects a tampered client and still lets the
 round complete with the remaining honest clients.
 
@@ -118,13 +120,13 @@ def test_server_rejects_tampered_client(tmp_path, monkeypatch):
 
     by_round: dict[int, list[bool]] = {}
     for row in rows:
-        by_round.setdefault(int(row["round"]), []).append(row["verified"] == "True")
+        by_round.setdefault(int(row["round"]), []).append(row["sig_valid"] == "True")
 
     assert set(by_round) == set(range(1, NUM_ROUNDS + 1))
-    for server_round, verified_flags in by_round.items():
-        assert len(verified_flags) == NUM_SUPERNODES
-        n_rejected = verified_flags.count(False)
+    for server_round, sig_valid_flags in by_round.items():
+        assert len(sig_valid_flags) == NUM_SUPERNODES
+        n_rejected = sig_valid_flags.count(False)
         assert n_rejected == 1, (
             f"round {server_round}: expected exactly 1 rejection, got {n_rejected}"
         )
-        assert verified_flags.count(True) == NUM_SUPERNODES - 1
+        assert sig_valid_flags.count(True) == NUM_SUPERNODES - 1

@@ -22,7 +22,7 @@ _CSV_HEADER = [
     "run", "round", "node_id", "scheme",
     "keygen_time", "sign_time", "verify_time",
     "train_time", "train_loss",
-    "payload_size", "sig_size", "pubkey_size", "verified",
+    "payload_size", "sig_size", "pubkey_size", "sig_valid", "has_nan",
 ]
 
 _EVAL_CSV_HEADER = ["run", "round", "accuracy", "loss"]
@@ -86,7 +86,7 @@ class SignedFedAvg(FedAvg):
 
             m = reply.content["metrics"]
             aggregate = is_valid and not has_nan
-            print(f"  Node {node_id}: verified={is_valid} nan={has_nan} ({verify_time:.4f}s)")
+            print(f"  Node {node_id}: sig_valid={is_valid} has_nan={has_nan} ({verify_time:.4f}s)")
 
             with open(self.results_path, "a", newline="") as f:
                 csv.writer(f).writerow([
@@ -94,7 +94,7 @@ class SignedFedAvg(FedAvg):
                     m["keygen_time"], m["sign_time"], verify_time,
                     m["train_time"], m["train_loss"],
                     m["payload_size"], m["sig_size"], m["pubkey_size"],
-                    aggregate,
+                    is_valid, has_nan,
                 ])
 
             if aggregate:

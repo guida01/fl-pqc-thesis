@@ -2,7 +2,8 @@
 FL-PQC thesis — results analysis
 Data: 8 schemes × 5 runs × 30 rounds × 5 clients = 750 rows/scheme
 Columns: run, round, node_id, scheme, keygen_time, sign_time, verify_time,
-         train_time, train_loss, payload_size, sig_size, pubkey_size, verified
+         train_time, train_loss, payload_size, sig_size, pubkey_size,
+         sig_valid, has_nan
 """
 
 import os
@@ -82,7 +83,7 @@ def load_all():
         print(f"  Loaded {scheme}: {len(df)} rows, "
               f"{df['run'].nunique()} runs, {df['round'].nunique()} rounds, "
               f"{df['node_id'].nunique()} nodes, "
-              f"verified={df['verified'].all()}")
+              f"sig_valid={df['sig_valid'].all()}, has_nan={df['has_nan'].any()}")
     return pd.concat(frames, ignore_index=True)
 
 
@@ -357,7 +358,7 @@ if __name__ == "__main__":
     print("Loading CSVs...")
     df = load_all()
     print(f"\nTotal rows: {len(df)}  |  Schemes: {df['scheme'].nunique()}  |  "
-          f"All verified: {df['verified'].all()}\n")
+          f"All sig_valid: {df['sig_valid'].all()}  |  Any has_nan: {df['has_nan'].any()}\n")
 
     stats = aggregate(df)
 
