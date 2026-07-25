@@ -88,6 +88,33 @@ def report_class_distribution(num_partitions: int) -> str:
     return text
 
 
+def load_test_data(batch_size: int = 256) -> DataLoader:
+    """CIFAR-10 test set (10 000 images) for centralized server-side
+    evaluation. Not partitioned — the server evaluates the whole set."""
+    transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize(_CIFAR_MEAN, _CIFAR_STD),
+    ])
+    dataset = datasets.CIFAR10("./data", train=False, download=True, transform=transform)
+    return DataLoader(dataset, batch_size=batch_size, shuffle=False)
+
+
+def evaluate(net, testloader, device) -> tuple:
+    """Evaluate net on testloader. Returns (loss, accuracy)."""
+    net.to(device)
+    net.eval()
+    criterion = nn.CrossEntropyLoss()
+    total_loss, correct, total = 0.0, 0, 0
+    with torch.no_grad():
+        for images, labels in testloader:
+            images, labels = images.to(device), labels.to(device)
+            outputs = net(images)
+            total_loss += criterion(outputs, labels).item() * labels.size(0)
+            correct += (outputs.argmax(dim=1) == labels).sum().item()
+            total += labels.size(0)
+    return total_loss / total, correct / total
+
+
 def train(net, trainloader, epochs, lr, device) -> float:
     """Train for `epochs` local epochs; returns avg loss of the last epoch."""
     net.to(device)
