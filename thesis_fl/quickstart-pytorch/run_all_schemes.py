@@ -39,6 +39,8 @@ RESULTS_DIR    = "results"
 EXECUTION_LOG  = os.path.join(RESULTS_DIR, "execution_order.log")
 MAX_WAIT_SEC   = 1800   # 30 min per run (10 clients × 50 rounds)
 
+CPU_GOVERNOR_PATH = "/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor"
+
 
 def log_execution(message: str):
     """Print and append a timestamped line to results/execution_order.log
@@ -50,6 +52,30 @@ def log_execution(message: str):
     print(line)
     with open(EXECUTION_LOG, "a") as f:
         f.write(line + "\n")
+
+
+def check_cpu_governor() -> str:
+    """Read-only: report the CPU governor (cpu0) and warn if it isn't
+    'performance'. Never changes it — frequency scaling affects timing
+    measurements (keygen/sign/verify/train), so the campaign should be run
+    with a fixed governor, but that's an operator decision, not something
+    this script should do silently."""
+    try:
+        with open(CPU_GOVERNOR_PATH) as f:
+            governor = f.read().strip()
+    except OSError as e:
+        governor = f"unknown (could not read {CPU_GOVERNOR_PATH}: {e})"
+
+    log_execution(f"CPU governor (cpu0): {governor}")
+    if governor != "performance":
+        print(
+            f"  WARNING: CPU governor is '{governor}', not 'performance'. "
+            "keygen/sign/verify/train timings may be affected by frequency "
+            "scaling during the campaign. This script will NOT change it "
+            "automatically — see README.md for the manual command to fix "
+            "it, if that's what you want."
+        )
+    return governor
 
 
 def randomized_scheme_order(run_num: int) -> list:
@@ -133,6 +159,7 @@ def run_scheme(scheme: str, run_num: int) -> bool:
 
 if __name__ == "__main__":
     os.makedirs(RESULTS_DIR, exist_ok=True)
+    check_cpu_governor()
 
     total = len(SCHEMES) * N_RUNS
     done  = 0

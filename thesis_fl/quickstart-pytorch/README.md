@@ -68,6 +68,29 @@ flwr run . --run-config "num-server-rounds=5 learning-rate=0.05"  --stream
 > [!TIP]
 > For a more detailed walk-through check our [quickstart PyTorch tutorial](https://flower.ai/docs/framework/tutorial-quickstart-pytorch.html)
 
+### CPU governor (for reproducible timing measurements)
+
+`run_all_schemes.py` reads the CPU frequency-scaling governor at startup
+(`/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor`) and warns — but
+never changes it — if it isn't `performance`. keygen/sign/verify/train
+timings can be affected by frequency scaling under other governors (e.g.
+`schedutil`, `powersave`), so for measurements you intend to report, fix it
+manually first:
+
+```bash
+# check the current governor
+cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+
+# set it to performance on all cores (requires cpupower / root)
+sudo cpupower frequency-set -g performance
+
+# revert to the distro default (commonly "schedutil" or "ondemand") when done
+sudo cpupower frequency-set -g schedutil
+```
+
+The governor value observed at the start of each campaign run is recorded,
+timestamped, in `results/execution_order.log`.
+
 ### Run with the Deployment Engine
 
 Follow this [how-to guide](https://flower.ai/docs/framework/how-to-run-flower-with-deployment-engine.html) to run the same app in this example but with Flower's Deployment Engine. After that, you might be intersted in setting up [secure TLS-enabled communications](https://flower.ai/docs/framework/how-to-enable-tls-connections.html) and [SuperNode authentication](https://flower.ai/docs/framework/how-to-authenticate-supernodes.html) in your federation.
