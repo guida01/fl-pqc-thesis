@@ -19,6 +19,16 @@ dependencies = [
     "matplotlib>=3.4.0",
 ]
 
+[project.optional-dependencies]
+# Not part of the experiment's runtime environment (`flwr run` only
+# installs `dependencies` above) — needed only for tests/ and the scipy
+# stats used by analysis/validate_results.py. Install with `pip install
+# -e ".[dev]"`. Pins match requirements-frozen.txt.
+dev = [
+    "pytest==9.1.1",
+    "scipy==1.17.1",
+]
+
 [tool.hatch.build.targets.wheel]
 packages = ["."]
 
