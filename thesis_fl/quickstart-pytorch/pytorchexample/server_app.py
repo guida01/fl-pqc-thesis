@@ -7,7 +7,7 @@ from flwr.app import ArrayRecord, ConfigRecord, Context, RecordDict
 from flwr.serverapp import Grid, ServerApp
 from flwr.serverapp.strategy import FedAvg
 
-from pytorchexample.task import CIFAR10CNN, weights_to_bytes
+from pytorchexample.task import CIFAR10CNN, report_class_distribution, weights_to_bytes
 from pytorchexample.signature_manager import SignatureManager
 app = ServerApp()
 
@@ -98,6 +98,8 @@ def main(grid: Grid, context: Context) -> None:
     results_path = os.path.join(results_dir, f"{scheme.replace('/', '_')}.csv")
 
     num_supernodes = int(context.run_config.get("num-supernodes", 5))
+    report_class_distribution(num_supernodes)
+
     strategy = SignedFedAvg(
         scheme=scheme,
         results_path=results_path,

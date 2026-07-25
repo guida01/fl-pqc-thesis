@@ -12,6 +12,16 @@ DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 _CIFAR_MEAN = (0.4914, 0.4822, 0.4465)
 _CIFAR_STD  = (0.2023, 0.1994, 0.2010)
+_NUM_CLASSES = 10
+
+# Fixed regardless of run_number/partition_id: partitions must be identical
+# across runs and across signature schemes, so that only the seeds that are
+# SUPPOSED to vary (model init, DataLoader shuffle — both keyed on
+# run_number) can affect training. A contiguous index slice (the previous
+# approach) does not guarantee balanced classes; a fixed-seed shuffle does,
+# in expectation, since CIFAR-10's 50 000 training images are already
+# class-balanced (5 000 per class).
+_PARTITION_SEED = 42
 
 
 class CIFAR10CNN(nn.Module):
@@ -33,17 +43,49 @@ class CIFAR10CNN(nn.Module):
         return self.classifier(self.features(x).view(x.size(0), -1))
 
 
+def _partition_indices(num_examples: int, num_partitions: int) -> list:
+    """Deterministic shuffle-then-split: the same `num_partitions` index
+    groups every time, regardless of run_number or partition_id, so
+    partitions are identical across runs and across signature schemes."""
+    rng = np.random.default_rng(_PARTITION_SEED)
+    shuffled = rng.permutation(num_examples)
+    split = num_examples // num_partitions
+    return [shuffled[i * split:(i + 1) * split] for i in range(num_partitions)]
+
+
 def load_data(partition_id: int, num_partitions: int, batch_size: int, run_number: int = 1) -> DataLoader:
     transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize(_CIFAR_MEAN, _CIFAR_STD),
     ])
     dataset = datasets.CIFAR10("./data", train=True, download=True, transform=transform)
-    split   = len(dataset) // num_partitions
-    subset  = Subset(dataset, range(partition_id * split, (partition_id + 1) * split))
+    partition_idx = _partition_indices(len(dataset), num_partitions)[partition_id]
+    subset = Subset(dataset, partition_idx.tolist())
     g = torch.Generator()
     g.manual_seed(42 + run_number)
     return DataLoader(subset, batch_size=batch_size, shuffle=True, generator=g)
+
+
+def report_class_distribution(num_partitions: int) -> str:
+    """Print and return the per-partition class-count table for the
+    CIFAR-10 training set, using the exact same deterministic partitioning
+    as load_data(). Intended to be called once at startup so the printed
+    numbers can be cited directly."""
+    targets = np.asarray(datasets.CIFAR10("./data", train=True, download=True).targets)
+    partitions = _partition_indices(len(targets), num_partitions)
+
+    lines = [
+        f"Class distribution per partition ({num_partitions} partitions, "
+        f"seed={_PARTITION_SEED}, {len(targets)} training images):",
+        "partition  " + "  ".join(f"class{c}" for c in range(_NUM_CLASSES)) + "    total",
+    ]
+    for pid, idx in enumerate(partitions):
+        counts = np.bincount(targets[idx], minlength=_NUM_CLASSES)
+        row = f"{pid:^9d}  " + "  ".join(f"{c:6d}" for c in counts) + f"  {counts.sum():6d}"
+        lines.append(row)
+    text = "\n".join(lines)
+    print(text)
+    return text
 
 
 def train(net, trainloader, epochs, lr, device) -> float:
