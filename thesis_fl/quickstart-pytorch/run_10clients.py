@@ -13,6 +13,7 @@ import random
 import datetime
 
 SCHEMES = [
+    "no_signature",
     "ML-DSA-44",
     "ML-DSA-65",
     "ML-DSA-87",
@@ -27,7 +28,7 @@ NUM_SUPERNODES = 10
 NUM_ROUNDS     = 30   # must match num-server-rounds in pyproject.toml
 
 PYPROJECT      = "pyproject.toml"
-RESULTS_DIR    = "results_10clients"
+RESULTS_DIR    = os.path.abspath("results_10clients")
 EXECUTION_LOG  = os.path.join(RESULTS_DIR, "execution_order.log")
 MAX_WAIT_SEC   = 1800   # 30 min per run (10 clients × 30 rounds)
 
@@ -79,12 +80,18 @@ def randomized_scheme_order(run_num: int) -> list:
 
 
 def update_config(scheme: str, run_num: int):
-    """Update scheme, run-number, and num-supernodes in pyproject.toml."""
+    """Update scheme, run-number, num-supernodes, AND results-dir in
+    pyproject.toml. results-dir must be rewritten too — server_app.py
+    reads it straight from context.run_config, not from this script's own
+    RESULTS_DIR constant, so without this the campaign would silently
+    write into whatever results-dir the file already had (e.g. the
+    5-client results/ directory), clobbering unrelated data."""
     with open(PYPROJECT) as f:
         content = f.read()
     content = re.sub(r'scheme\s*=\s*"[^"]*"', f'scheme = "{scheme}"', content)
     content = re.sub(r'run-number\s*=\s*\d+', f'run-number = {run_num}', content)
     content = re.sub(r'num-supernodes\s*=\s*\d+', f'num-supernodes = {NUM_SUPERNODES}', content)
+    content = re.sub(r'results-dir\s*=\s*"[^"]*"', f'results-dir = "{RESULTS_DIR}"', content)
     with open(PYPROJECT, "w") as f:
         f.write(content)
 
