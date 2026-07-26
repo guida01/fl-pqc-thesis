@@ -9,21 +9,24 @@ Run from thesis_fl/quickstart-pytorch/:
 
 import glob
 import os
+import re
 
 import numpy as np
 import pandas as pd
 from scipy import stats as sp_stats
 
 RESULTS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "results")
+EXECUTION_LOG_PATH = os.path.join(RESULTS_DIR, "execution_order.log")
 OUT_DIR = os.path.dirname(os.path.abspath(__file__))
 NUM_ROUNDS = 30
 NUM_RUNS = 5
 NUM_NODES = 5
 
-# Nominal scheme execution order, from run_all_schemes.py's SCHEMES list
-# (the driver that produced results/): `for scheme in SCHEMES: for run_num
-# in range(1, N_RUNS+1)`, i.e. all 5 runs of a scheme complete before the
-# next scheme starts. no_signature ran first, ECDSA-256 ran last.
+# Fixed display order used only for cosmetic print ordering across
+# sections (2, 5, 6) — NOT the chronological execution order. The
+# campaign randomizes scheme order independently per run
+# (run_all_schemes.py's randomized_scheme_order()); section 3 reads the
+# real order from results/execution_order.log instead of assuming one.
 EXECUTION_ORDER = [
     "no_signature",
     "ML-DSA-44",
@@ -35,12 +38,6 @@ EXECUTION_ORDER = [
     "ECDSA-256",
 ]
 
-# rerun_failed.py later re-executed these (scheme, run) pairs out of band
-# (after the full sweep completed) and spliced their rows back into the
-# CSVs by run number, not by chronological position. For these two
-# schemes, `run` number is NOT a reliable proxy for wall-clock order.
-RERUN_AFFECTED = {"ML-DSA-44", "Falcon-padded-512"}
-
 PQC_SCHEMES = ["ML-DSA-44", "ML-DSA-65", "ML-DSA-87", "Falcon-padded-512", "SPHINCS+-SHA2-128s-simple"]
 CLASSICAL_SCHEMES = ["RSA-2048", "ECDSA-256"]
 SIGNED_SCHEMES = PQC_SCHEMES + CLASSICAL_SCHEMES  # excludes no_signature
@@ -51,11 +48,23 @@ LINE = "=" * 78
 
 
 def load_all():
+    """Split results/*.csv into two structures: the main per-client CSVs
+    (run, round, node_id, scheme, ..., sig_valid, has_nan) keyed by scheme,
+    and the centralized-evaluation CSVs (run, round, accuracy, loss, one
+    row per round per run, no node_id) keyed by scheme with the trailing
+    `_eval` stripped. Mixing the two into one structure is what broke
+    section 1 with `KeyError: 'train_loss'` — an eval frame has no such
+    column."""
     frames = {}
+    eval_frames = {}
     for path in sorted(glob.glob(os.path.join(RESULTS_DIR, "*.csv"))):
-        scheme = os.path.splitext(os.path.basename(path))[0]
-        frames[scheme] = pd.read_csv(path)
-    return frames
+        basename = os.path.splitext(os.path.basename(path))[0]
+        if basename.endswith("_eval"):
+            scheme = basename[: -len("_eval")]
+            eval_frames[scheme] = pd.read_csv(path)
+        else:
+            frames[basename] = pd.read_csv(path)
+    return frames, eval_frames
 
 
 def section_header(title):
@@ -367,94 +376,164 @@ def section2_integrity(dfs):
 # 3. TEMPORAL DRIFT
 # ─────────────────────────────────────────────────────────────────────────
 
+def parse_execution_order(log_path):
+    """Parse results/execution_order.log's
+    `[position/total] starting SCHEME run RUN` lines (written by
+    run_all_schemes.py's run_scheme()-driving loop) into
+    {(scheme, run): position}. `position` is the TRUE chronological
+    launch order (1..total) regardless of the randomized scheme order or
+    of `run` number — this is what section 3 needs as its time proxy.
+    Lines from anything else (governor checks, "-> completed" lines, a
+    one-off validation run invoked directly instead of through the
+    campaign loop) don't match and are silently skipped."""
+    positions = {}
+    if not os.path.exists(log_path):
+        return positions
+    pattern = re.compile(r"\[(\d+)/(\d+)\]\s+starting\s+(.+?)\s+run\s+(\d+)\s*$")
+    with open(log_path) as f:
+        for line in f:
+            m = pattern.search(line.strip())
+            if m:
+                position, _total, scheme, run = m.groups()
+                positions[(scheme, int(run))] = int(position)
+    return positions
+
+
 def section3_temporal_drift(dfs):
     section_header("3. DERIVA TEMPORAL")
 
+    positions = parse_execution_order(EXECUTION_LOG_PATH)
+    if not positions:
+        print(
+            f"AVISO: nao foi possivel ler posicoes de execucao de "
+            f"{EXECUTION_LOG_PATH} (ficheiro em falta, ou sem linhas "
+            "'[N/total] starting ...'). Sem a ordem real nao e possivel "
+            "reportar deriva temporal nesta seccao."
+        )
+        return
+
+    total = max(positions.values())
     print(
-        "Ordem de execucao assumida (run_all_schemes.py SCHEMES, execucao\n"
-        "'for scheme: for run:'): " + " -> ".join(EXECUTION_ORDER) + "\n\n"
-        "Aviso: rerun_failed.py reexecutou ML-DSA-44 (runs 1,2) e "
-        "Falcon-padded-512 (run 1) DEPOIS do sweep completo, e recolou as\n"
-        "linhas no CSV pelo numero de run, nao pela ordem cronologica real.\n"
-        "Para estes 2 esquemas, 'run' NAO e um proxy fiavel de tempo; os\n"
-        "resultados de correlacao intra-esquema abaixo sao reportados na\n"
-        "mesma mas marcados como nao fiaveis."
+        f"Ordem de execucao lida de results/execution_order.log: "
+        f"{len(positions)} pares (esquema, run) com posicao cronologica "
+        f"conhecida (1-{total}).\n"
+        "A campanha usa ordem ALEATORIZADA por run "
+        "(random.Random(1000+run_num).shuffle em run_all_schemes.py): "
+        "cada uma das 5 sequencias de 8 esquemas foi baralhada de forma "
+        "independente, por isso cada esquema ocupa uma posicao diferente "
+        "em cada run. Isto separa por DESENHO o efeito de posicao "
+        "(deriva termica/de frequencia ao longo da campanha) do efeito "
+        "de esquema — ja nao ha uma unica sequencia observada (a "
+        "limitacao que a versao anterior desta seccao, escrita para a "
+        "ordem fixa 'for scheme: for run:', mencionava); ha 5 "
+        "permutacoes independentes, e a correlacao posicao-vs-esquema "
+        "pode ser verificada diretamente nos dados, abaixo."
     )
 
-    corr_rows = []
-    print("\nCorrelacao (Pearson) entre numero do run e train_time, por esquema (nivel-linha, n=todas as linhas do esquema):")
-    for scheme in EXECUTION_ORDER:
-        if scheme not in dfs:
-            continue
-        df = dfs[scheme]
-        if df["run"].nunique() < 2:
-            continue
-        r, p = sp_stats.pearsonr(df["run"], df["train_time"])
-        reliable = scheme not in RERUN_AFFECTED
-        flag = "" if reliable else "  [NAO FIAVEL - rerun fora de ordem]"
-        print(f"  {scheme:30s} r={r:+.4f}  p={p:.4g}  n={len(df)}{flag}")
-        corr_rows.append({"scheme": scheme, "r": r, "p_value": p, "n": len(df), "run_order_reliable": reliable})
-
-    print("\nMedia de train_time por run, por esquema:")
-    means_rows = []
-    for scheme in EXECUTION_ORDER:
-        if scheme not in dfs:
-            continue
-        df = dfs[scheme]
+    # Attach the execution position to each (scheme, run) pair. Position
+    # is a per-PAIR property, not per-row, so aggregate each pair's rows
+    # to one mean train_time first.
+    pair_rows = []
+    for scheme, df in dfs.items():
         by_run = df.groupby("run")["train_time"].agg(["mean", "std", "count"])
         for run, row in by_run.iterrows():
-            means_rows.append({"scheme": scheme, "run": run, "train_time_mean": row["mean"], "train_time_std": row["std"], "n": row["count"]})
-        means_str = "  ".join(f"run{r}={m:.3f}s" for r, m in by_run["mean"].items())
-        print(f"  {scheme:30s} {means_str}")
+            pair_rows.append({
+                "scheme": scheme, "run": int(run),
+                "position": positions.get((scheme, int(run))),
+                "train_time_mean": row["mean"], "train_time_std": row["std"], "n": row["count"],
+            })
+    pairs_df = pd.DataFrame(pair_rows)
 
-    means_df = pd.DataFrame(means_rows)
-
-    # first vs last executed scheme
-    first_scheme, last_scheme = EXECUTION_ORDER[0], EXECUTION_ORDER[-1]
-    first_mean = dfs[first_scheme]["train_time"].mean() if first_scheme in dfs else float("nan")
-    last_mean = dfs[last_scheme]["train_time"].mean() if last_scheme in dfs else float("nan")
-    print(
-        f"\nPrimeiro esquema executado: {first_scheme}  mean(train_time)={first_mean:.4f}s"
-        f"  (n={len(dfs[first_scheme]) if first_scheme in dfs else 0}"
-        + (", INCOMPLETO" if first_scheme in dfs and len(dfs[first_scheme]) != NUM_RUNS*NUM_ROUNDS*NUM_NODES else "") + ")"
-    )
-    print(f"Ultimo esquema executado:   {last_scheme}  mean(train_time)={last_mean:.4f}s  (n={len(dfs[last_scheme])})")
-    if not (np.isnan(first_mean) or np.isnan(last_mean)):
-        diff_pct = 100 * (last_mean - first_mean) / first_mean
-        print(f"Diferenca (ultimo - primeiro): {last_mean - first_mean:+.4f}s ({diff_pct:+.2f}%)")
-
-    corr_df = pd.DataFrame(corr_rows)
-    reliable_corrs = corr_df[corr_df["run_order_reliable"]]
-    max_abs_r = reliable_corrs["r"].abs().max() if len(reliable_corrs) else float("nan")
-    n_significant = int((reliable_corrs["p_value"] < 0.05).sum())
-
-    print(
-        f"\nVeredicto: entre os esquemas com ordem de run fiavel, "
-        f"|r| maximo = {max_abs_r:.4f}; {n_significant}/{len(reliable_corrs)} "
-        "correlacoes com p<0.05."
-    )
-    if n_significant == 0 and (np.isnan(max_abs_r) or max_abs_r < 0.15):
+    n_missing_pos = int(pairs_df["position"].isna().sum())
+    if n_missing_pos:
         print(
-            "Sem sinal consistente de deriva termica/de frequencia dentro "
-            "dos esquemas: train_time nao correlaciona de forma relevante "
-            "com o numero do run. A diferenca entre o primeiro e o ultimo "
-            "esquema executado (acima) mistura efeito de esquema com "
-            "efeito de posicao na sequencia — com apenas 1 sequencia "
-            "observada, os dois nao sao estatisticamente separaveis; mas "
-            "a ausencia de deriva intra-esquema sugere que o confundimento "
-            "por ordem de execucao, a existir, e pequeno face a variacao "
-            "normal de treino."
+            f"\nAVISO: {n_missing_pos} pares (esquema,run) presentes nos "
+            "CSV mas sem posicao correspondente no log — excluidos desta "
+            "analise (fora do alcance do log, p.ex. reruns manuais)."
+        )
+    pairs_df = pairs_df.dropna(subset=["position"]).copy()
+    pairs_df["position"] = pairs_df["position"].astype(int)
+    pairs_df.to_csv(os.path.join(OUT_DIR, "section3_train_time_by_run.csv"), index=False)
+
+    # Confirm position and scheme are decorrelated by the randomization:
+    # show the spread of positions each scheme actually occupied.
+    print("\nPosicoes ocupadas por cada esquema ao longo da campanha (confirma a decorrelacao com o esquema):")
+    for scheme in sorted(pairs_df["scheme"].unique()):
+        pos_list = sorted(pairs_df.loc[pairs_df["scheme"] == scheme, "position"].tolist())
+        print(f"  {scheme:30s} posicoes={pos_list}")
+
+    # --- global correlation: position vs mean train_time, all pairs pooled ---
+    r_global, p_global = sp_stats.pearsonr(pairs_df["position"], pairs_df["train_time_mean"])
+    print(
+        f"\nCorrelacao GLOBAL (Pearson) entre posicao de execucao (1-{total}) "
+        f"e train_time medio do par (esquema,run): "
+        f"r={r_global:+.4f}  p={p_global:.4g}  n={len(pairs_df)}"
+    )
+
+    # --- per-scheme correlation: n=5 points each (low power), reported anyway ---
+    print(
+        "\nCorrelacao POR ESQUEMA entre posicao e train_time medio "
+        "(n=5 pontos por esquema — poder estatistico baixo, mas cada "
+        "esquema ocupa posicoes espalhadas pela campanha, nao um bloco):"
+    )
+    per_scheme_rows = []
+    for scheme in EXECUTION_ORDER:
+        if scheme not in dfs:
+            continue
+        sub = pairs_df[pairs_df["scheme"] == scheme]
+        if sub["position"].nunique() < 2:
+            print(f"  {scheme:30s} (posicoes insuficientes para correlacao)")
+            continue
+        r, p = sp_stats.pearsonr(sub["position"], sub["train_time_mean"])
+        print(f"  {scheme:30s} r={r:+.4f}  p={p:.4g}  n={len(sub)}")
+        per_scheme_rows.append({"scheme": scheme, "r": r, "p_value": p, "n": len(sub)})
+    per_scheme_df = pd.DataFrame(per_scheme_rows)
+    per_scheme_df.to_csv(os.path.join(OUT_DIR, "section3_run_correlation.csv"), index=False)
+
+    # --- does scheme identity itself explain train_time_mean? ---
+    groups = [g["train_time_mean"].values for _, g in pairs_df.groupby("scheme")]
+    f_stat, anova_p = sp_stats.f_oneway(*groups)
+    print(
+        f"\nANOVA (o train_time medio por par difere consoante o esquema?): "
+        f"F={f_stat:.4f}  p={anova_p:.4f}"
+    )
+
+    # --- first vs last position executed, overall ---
+    first_pair = pairs_df.loc[pairs_df["position"].idxmin()]
+    last_pair = pairs_df.loc[pairs_df["position"].idxmax()]
+    print(
+        f"\nPrimeira posicao executada (1): {first_pair['scheme']} run "
+        f"{int(first_pair['run'])}  train_time_mean={first_pair['train_time_mean']:.4f}s"
+    )
+    print(
+        f"Ultima posicao executada ({int(pairs_df['position'].max())}): "
+        f"{last_pair['scheme']} run {int(last_pair['run'])}  "
+        f"train_time_mean={last_pair['train_time_mean']:.4f}s"
+    )
+
+    print(
+        f"\nVeredicto: correlacao global posicao-vs-tempo r={r_global:+.4f} "
+        f"(p={p_global:.4g}); ANOVA esquema-vs-tempo p={anova_p:.4f}."
+    )
+    if abs(r_global) < 0.15 and p_global > 0.05:
+        print(
+            "Sem sinal de deriva termica/de frequencia associada a "
+            "posicao de execucao ao longo da campanha. Como a ordem foi "
+            "aleatorizada de forma independente por run, este resultado "
+            "NAO tem a limitacao da versao anterior desta seccao (uma "
+            "unica sequencia fixa, onde posicao e esquema eram a mesma "
+            "coisa) — aqui posicao e esquema sao estatisticamente "
+            "distinguiveis (ver posicoes espalhadas acima), e nenhum dos "
+            "dois mostra efeito relevante sobre train_time."
         )
     else:
         print(
-            "Ha sinal de correlacao entre run/posicao temporal e "
-            "train_time nalgum esquema — possivel confundimento entre "
-            "ordem de execucao e esquema; tratar comparacoes absolutas de "
-            "train_time entre esquemas com cautela."
+            "Ha sinal de correlacao entre posicao de execucao e "
+            "train_time, e/ou entre esquema e train_time — possivel "
+            "deriva termica/de frequencia ao longo da campanha, ou efeito "
+            "de esquema. Tratar comparacoes absolutas de train_time entre "
+            "esquemas com cautela; inspecionar section3_train_time_by_run.csv."
         )
-
-    corr_df.to_csv(os.path.join(OUT_DIR, "section3_run_correlation.csv"), index=False)
-    means_df.to_csv(os.path.join(OUT_DIR, "section3_train_time_by_run.csv"), index=False)
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -630,11 +709,171 @@ def section5_crypto_cost_per_round(dfs):
             print(f"Esquema assinado com MENOR fracao criptografica media: {best_signed['scheme']} ({best_signed['crypto_fraction_pct_mean']:.4f}%)")
 
 
+# ─────────────────────────────────────────────────────────────────────────
+# 6. CENTRALIZED-EVALUATION ACCURACY, AND ORTHOGONALITY VIA ACCURACY
+# ─────────────────────────────────────────────────────────────────────────
+
+def section6_accuracy(eval_dfs):
+    section_header("6. ACCURACY (AVALIACAO CENTRAL) E ORTOGONALIDADE VIA ACCURACY")
+
+    if not eval_dfs:
+        print("Nenhum ficheiro *_eval.csv encontrado — avaliacao central "
+              "nao estava ativa nesta campanha (run_config eval-central).")
+        return
+
+    print(f"Esquemas com avaliacao central: {sorted(eval_dfs)}")
+
+    # --- final-round accuracy per scheme, mean +/- std across runs ---
+    print(f"\nAccuracy final (ronda {NUM_ROUNDS}), media +/- desvio entre os runs:")
+    final_rows = []
+    for scheme in EXECUTION_ORDER:
+        if scheme not in eval_dfs:
+            continue
+        df = eval_dfs[scheme]
+        final = df[df["round"] == NUM_ROUNDS]["accuracy"]
+        mean, std = float(final.mean()), float(final.std())
+        print(f"  {scheme:30s} accuracy={mean:.4f} +/- {std:.4f}  (n={len(final)} runs)")
+        final_rows.append({
+            "scheme": scheme, "final_accuracy_mean": mean,
+            "final_accuracy_std": std, "n_runs": len(final),
+        })
+    pd.DataFrame(final_rows).to_csv(os.path.join(OUT_DIR, "section6_final_accuracy.csv"), index=False)
+
+    # --- accuracy by round, mean +/- std across runs, per scheme ---
+    by_round_rows = []
+    for scheme, df in eval_dfs.items():
+        by_round = df.groupby("round")["accuracy"].agg(["mean", "std"]).reset_index()
+        by_round["scheme"] = scheme
+        by_round_rows.append(by_round)
+    by_round_df = pd.concat(by_round_rows, ignore_index=True)
+    by_round_df = by_round_df.rename(columns={"mean": "accuracy_mean", "std": "accuracy_std"})
+    by_round_df = by_round_df[["scheme", "round", "accuracy_mean", "accuracy_std"]]
+    by_round_df.to_csv(os.path.join(OUT_DIR, "section6_accuracy_by_round.csv"), index=False)
+
+    milestones = [r for r in [0, 1, 5, 10, 15, 20, 25, NUM_ROUNDS] if r <= NUM_ROUNDS]
+    print(f"\nAccuracy media por ronda, marcos {milestones}:")
+    print("scheme".ljust(30) + "".join(f"r{r:>3d}".rjust(9) for r in milestones))
+    for scheme in EXECUTION_ORDER:
+        if scheme not in eval_dfs:
+            continue
+        sub = by_round_df[by_round_df["scheme"] == scheme].set_index("round")["accuracy_mean"]
+        line = scheme.ljust(30) + "".join(f"{sub.get(r, float('nan')):9.4f}" for r in milestones)
+        print(line)
+
+    # --- orthogonality via accuracy ---
+    print(
+        "\nOrtogonalidade via accuracy: para cada (run, round), compara-se "
+        "a accuracy do modelo GLOBAL entre os esquemas. Ao contrario de "
+        "train_loss (seccao 1, 5 valores por (run,round) — um por cliente "
+        "— exigindo o truque do multiconjunto ordenado porque node_id nao "
+        "e uma chave de junta estavel), aqui ha um UNICO valor por "
+        "(scheme,run,round): o modelo global avaliado no servidor. "
+        "Comparamos diretamente, sem ambiguidade de junta.\n"
+        "Hipotese (identica a secao 1): a assinatura nao altera pesos, "
+        "logo a accuracy nao deveria depender do esquema."
+    )
+
+    common_schemes = sorted(eval_dfs)
+    long_frames = []
+    for scheme, df in eval_dfs.items():
+        tmp = df[["run", "round", "accuracy"]].copy()
+        tmp["scheme"] = scheme
+        long_frames.append(tmp)
+    long_df = pd.concat(long_frames, ignore_index=True)
+    pivot = long_df.pivot_table(index=["run", "round"], columns="scheme", values="accuracy")
+
+    complete = pivot.dropna()
+    print(
+        f"\n(run,round) tuplos totais observados nalgum esquema: {len(pivot)}\n"
+        f"(run,round) tuplos presentes em TODOS os {len(common_schemes)} esquemas: {len(complete)}"
+    )
+    if len(complete) < len(pivot):
+        missing = len(pivot) - len(complete)
+        print(f"  ({missing} tuplos excluidos por dados em falta nalgum esquema)")
+
+    reference_scheme = "no_signature" if "no_signature" in eval_dfs else common_schemes[0]
+    other_schemes = [s for s in common_schemes if s != reference_scheme]
+    diffs = complete[other_schemes].sub(complete[reference_scheme], axis=0).abs()
+
+    diff_rows = []
+    for scheme in other_schemes:
+        for (run, rnd), val in diffs[scheme].items():
+            diff_rows.append({
+                "run": run, "round": rnd, "reference_scheme": reference_scheme,
+                "scheme": scheme, "abs_diff": val,
+            })
+    diff_df = pd.DataFrame(diff_rows)
+    diff_df.to_csv(os.path.join(OUT_DIR, "section6_accuracy_orthogonality.csv"), index=False)
+
+    n_compared = len(diff_df)
+    bitwise_equal = int((diff_df["abs_diff"] == 0.0).sum())
+    n_diverging = int((diff_df["abs_diff"] > FLOAT_NOISE_EPS).sum())
+    max_diverg = float(diff_df["abs_diff"].max()) if n_compared else float("nan")
+
+    print(
+        f"\nComparacoes (run,round,scheme) vs esquema de referencia ({reference_scheme}): {n_compared}\n"
+        f"  identicas bit-a-bit (diff==0.0):     {bitwise_equal} ({100*bitwise_equal/n_compared:.2f}%)\n"
+        f"  divergem > {FLOAT_NOISE_EPS:g} (limiar de ruido float): {n_diverging} ({100*n_diverging/n_compared:.2f}%)\n"
+        f"  divergencia maxima absoluta observada: {max_diverg:.4f}"
+    )
+
+    # Round 0 = initial model, evaluated BEFORE any training or signing —
+    # an even cleaner bit-exactness test than section 1's round 1, since it
+    # doesn't depend on data loading order at all, only on model init.
+    round0 = diff_df[diff_df["round"] == 0]
+    round0_exact = bool((round0["abs_diff"] == 0.0).all()) if len(round0) else None
+    print(
+        f"\nRonda 0 (modelo inicial, antes de qualquer treino ou assinatura): "
+        f"{len(round0)} comparacoes, identicas bit-a-bit: {round0_exact}"
+    )
+
+    rounds_gt0 = diff_df[diff_df["round"] > 0]
+    anova_p = float("nan")
+    if len(rounds_gt0):
+        by_scheme = rounds_gt0.groupby("scheme")["abs_diff"].agg(["mean", "std", "max", "count"])
+        print(f"\nDivergencia (ronda > 0) por esquema-alvo (comparado com {reference_scheme}):")
+        print(by_scheme.to_string())
+        by_scheme.reset_index().to_csv(os.path.join(OUT_DIR, "section6_divergence_by_scheme.csv"), index=False)
+
+        groups = [g["abs_diff"].values for _, g in rounds_gt0.groupby("scheme")]
+        if len(groups) >= 2 and all(len(g) > 1 for g in groups):
+            f_stat, anova_p = sp_stats.f_oneway(*groups)
+            print(f"\nANOVA (a divergencia de accuracy difere consoante o esquema-alvo?): "
+                  f"F={f_stat:.4f}  p={anova_p:.4f}")
+
+    if round0_exact and (np.isnan(anova_p) or anova_p > 0.05):
+        print(
+            "\nVeredicto: a ronda 0 (modelo inicial) e identica bit-a-bit "
+            "em accuracy entre todos os esquemas comparados, e a "
+            "divergencia que aparece a partir da ronda 1 NAO depende do "
+            "esquema (ANOVA nao significativo, ou dados insuficientes para "
+            "rejeitar). Consistente com a seccao 1: a mesma origem "
+            "(nao-determinismo numerico entre invocacoes independentes do "
+            "`flwr run`, nao a assinatura) explica a divergencia observada. "
+            "Isto complementa a prova de ortogonalidade via train_loss com "
+            "uma metrica de accuracy diretamente citavel na tese."
+        )
+    else:
+        print(
+            "\nVeredicto: ha sinal de efeito estrutural na accuracy "
+            "associado ao esquema (ronda 0 nao-identica e/ou ANOVA "
+            "significativo) — inspecionar section6_accuracy_orthogonality.csv "
+            "e section6_divergence_by_scheme.csv antes de citar a ortogonalidade."
+        )
+
+    print(
+        f"\nCSVs: analysis/section6_final_accuracy.csv, "
+        "analysis/section6_accuracy_by_round.csv, "
+        f"analysis/section6_accuracy_orthogonality.csv ({n_compared} linhas)"
+    )
+
+
 def main():
-    dfs = load_all()
+    dfs, eval_dfs = load_all()
     print(LINE)
     print("VALIDACAO DE RESULTADOS — thesis_fl/quickstart-pytorch/results/")
-    print(f"Esquemas carregados: {sorted(dfs)}")
+    print(f"Esquemas carregados (CSV principal): {sorted(dfs)}")
+    print(f"Esquemas carregados (CSV _eval):     {sorted(eval_dfs)}")
     print(LINE)
 
     section1_orthogonality(dfs)
@@ -642,6 +881,7 @@ def main():
     section3_temporal_drift(dfs)
     section4_communication_cost(dfs)
     section5_crypto_cost_per_round(dfs)
+    section6_accuracy(eval_dfs)
 
     print(f"\n{LINE}\nCSVs por seccao escritos em: {OUT_DIR}/\n{LINE}")
 

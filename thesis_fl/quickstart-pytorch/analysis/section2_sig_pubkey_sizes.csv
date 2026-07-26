@@ -1,7 +1,8 @@
 scheme,field,value,count
-ECDSA-256,sig_size,70.0,180
+ECDSA-256,sig_size,69.0,1
+ECDSA-256,sig_size,70.0,188
 ECDSA-256,sig_size,71.0,378
-ECDSA-256,sig_size,72.0,192
+ECDSA-256,sig_size,72.0,183
 ECDSA-256,pubkey_size,91.0,750
 Falcon-padded-512,sig_size,666.0,750
 Falcon-padded-512,pubkey_size,897.0,750
