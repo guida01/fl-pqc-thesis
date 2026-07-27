@@ -1,26 +1,43 @@
-"""Validation report over thesis_fl/quickstart-pytorch/results/*.csv.
+"""Validation report over a results directory (results/*.csv or
+results_10clients/*.csv, etc).
 
-Read-only: never writes to results/. Prints a text report to stdout and
-drops one CSV per section into analysis/.
+Read-only: never writes to the results directory. Prints a text report to
+stdout and drops one CSV per section into analysis/<results-dir-name>/.
 
 Run from thesis_fl/quickstart-pytorch/:
-    python analysis/validate_results.py
+    python analysis/validate_results.py [results_dir] [--num-clients N]
+
+results_dir defaults to results/. Examples:
+    python3 analysis/validate_results.py results/
+    python3 analysis/validate_results.py results_10clients/
 """
 
+import argparse
 import glob
 import os
 import re
+from collections import Counter
 
 import numpy as np
 import pandas as pd
 from scipy import stats as sp_stats
 
-RESULTS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "results")
+ANALYSIS_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(ANALYSIS_DIR)
+
+# The following four are placeholders reassigned by main() from CLI args,
+# before any section function runs — every section function reads them as
+# module globals at call time, so this keeps the many `os.path.join(OUT_DIR,
+# ...)` / `NUM_NODES` references below working unchanged for either
+# results directory, without threading extra parameters through every
+# function signature.
+RESULTS_DIR = os.path.join(PROJECT_ROOT, "results")
 EXECUTION_LOG_PATH = os.path.join(RESULTS_DIR, "execution_order.log")
-OUT_DIR = os.path.dirname(os.path.abspath(__file__))
+OUT_DIR = os.path.join(ANALYSIS_DIR, "results")
+NUM_NODES = None
+
 NUM_ROUNDS = 30
 NUM_RUNS = 5
-NUM_NODES = 5
 
 # Fixed display order used only for cosmetic print ordering across
 # sections (2, 5, 6) — NOT the chronological execution order. The
@@ -67,6 +84,44 @@ def load_all():
     return frames, eval_frames
 
 
+def detect_num_clients(dfs):
+    """Auto-detect the number of simulated clients from the data itself:
+    distinct node_id count per (scheme, run). Used instead of a hardcoded
+    constant so the same script works for results/ (5 clients) and
+    results_10clients/ (10 clients) without a flag — falls back to the
+    most common count and warns if it isn't perfectly uniform."""
+    counts = []
+    for df in dfs.values():
+        for _run, g in df.groupby("run"):
+            counts.append(int(g["node_id"].nunique()))
+    if not counts:
+        return None
+    tally = Counter(counts)
+    most_common, _freq = tally.most_common(1)[0]
+    if len(tally) > 1:
+        print(
+            f"AVISO: numero de node_id distintos por (esquema,run) nao e "
+            f"uniforme: {dict(tally)}. A usar o valor mais frequente: {most_common}."
+        )
+    return most_common
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Validation report over a results directory (results/ or results_10clients/, etc)."
+    )
+    parser.add_argument(
+        "results_dir", nargs="?", default=None,
+        help="Path to the results directory. Defaults to <project_root>/results.",
+    )
+    parser.add_argument(
+        "--num-clients", type=int, default=None,
+        help="Number of simulated clients. If omitted, auto-detected from "
+             "the data (distinct node_id count per run).",
+    )
+    return parser.parse_args()
+
+
 def section_header(title):
     print(f"\n{LINE}\n{title}\n{LINE}")
 
@@ -82,11 +137,11 @@ def section1_orthogonality(dfs):
         "Nota metodologica: node_id NAO e uma chave de junta valida entre\n"
         "esquemas (nem entre runs do mesmo esquema). O Flower atribui\n"
         "node_id aleatoriamente a cada invocacao de `flwr run` — cada\n"
-        "(scheme, run) tem o seu proprio conjunto de 5 node_id, sem overlap\n"
+        f"(scheme, run) tem o seu proprio conjunto de {NUM_NODES} node_id, sem overlap\n"
         "com qualquer outro (verificado: interseccao vazia entre os node_id\n"
         "de ECDSA run1 e RSA run1, e entre ECDSA run1 e ECDSA run2).\n"
         "Em vez de comparar (run, round, node_id) diretamente, comparamos,\n"
-        "para cada (run, round), o MULTICONJUNTO ORDENADO dos 5 valores de\n"
+        f"para cada (run, round), o MULTICONJUNTO ORDENADO dos {NUM_NODES} valores de\n"
         "train_loss de cada esquema. Isto e valido porque train_loss so\n"
         "depende de: seed do modelo (torch.manual_seed(run_number*42),\n"
         "server_app.py:111) e seed do DataLoader (42+run_number,\n"
@@ -248,7 +303,11 @@ def section2_integrity(dfs):
     section_header("2. INTEGRIDADE DOS DADOS")
 
     # --- row counts ---
-    print("Contagem de linhas por esquema (esperado 750 = 5 runs x 30 rounds x 5 nos):")
+    expected_total = NUM_RUNS * NUM_ROUNDS * NUM_NODES
+    print(
+        f"Contagem de linhas por esquema (esperado {expected_total} = "
+        f"{NUM_RUNS} runs x {NUM_ROUNDS} rounds x {NUM_NODES} nos):"
+    )
     row_counts = []
     for scheme, df in dfs.items():
         n = len(df)
@@ -313,7 +372,7 @@ def section2_integrity(dfs):
     pd.DataFrame(nan_rows).to_csv(os.path.join(OUT_DIR, "section2_nan_counts.csv"), index=False)
 
     # --- node_id consistency within each run ---
-    print("\nConsistencia de node_id dentro de cada run (mesmo conjunto de 5 nos em todas as rondas do run):")
+    print(f"\nConsistencia de node_id dentro de cada run (mesmo conjunto de {NUM_NODES} nos em todas as rondas do run):")
     consistency_rows = []
     all_consistent = True
     for scheme, df in dfs.items():
@@ -338,7 +397,7 @@ def section2_integrity(dfs):
     if n_inconsistent:
         print(consistency_df[~consistency_df["consistent"]].to_string(index=False))
     else:
-        print("  Todos os runs usam o mesmo conjunto de 5 node_id em todas as suas rondas presentes.")
+        print(f"  Todos os runs usam o mesmo conjunto de {NUM_NODES} node_id em todas as suas rondas presentes.")
 
     # --- sig_size / pubkey_size constant per scheme, except ECDSA-256 ---
     print("\nsig_size / pubkey_size por esquema:")
@@ -414,7 +473,7 @@ def section3_temporal_drift(dfs):
 
     total = max(positions.values())
     print(
-        f"Ordem de execucao lida de results/execution_order.log: "
+        f"Ordem de execucao lida de {EXECUTION_LOG_PATH}: "
         f"{len(positions)} pares (esquema, run) com posicao cronologica "
         f"conhecida (1-{total}).\n"
         "A campanha usa ordem ALEATORIZADA por run "
@@ -723,6 +782,25 @@ def section6_accuracy(eval_dfs):
 
     print(f"Esquemas com avaliacao central: {sorted(eval_dfs)}")
 
+    # --- eval CSV row counts ---
+    # One row per (run, round) INCLUDING round 0 (the initial model,
+    # evaluated once before round 1 — Strategy.start() calls evaluate_fn(0,
+    # initial_arrays) up front) — so NUM_ROUNDS+1 per run, not NUM_ROUNDS x
+    # NUM_NODES like the main per-client CSVs. Using the main-CSV formula
+    # here would print "expected 750" (5 clients) or "expected 1500" (10
+    # clients) for a file that's actually always NUM_RUNS x (NUM_ROUNDS+1)
+    # = 155 rows, regardless of client count — a client-count-independent
+    # quantity, since central evaluation runs once on the server, not once
+    # per client.
+    expected_eval_rows = NUM_RUNS * (NUM_ROUNDS + 1)
+    print(f"\nContagem de linhas dos ficheiros _eval (esperado {expected_eval_rows} = {NUM_RUNS} runs x {NUM_ROUNDS+1} rondas [0..{NUM_ROUNDS}], independente do numero de clientes):")
+    for scheme in EXECUTION_ORDER:
+        if scheme not in eval_dfs:
+            continue
+        n = len(eval_dfs[scheme])
+        status = "OK" if n == expected_eval_rows else f"INCOMPLETO (faltam {expected_eval_rows - n})"
+        print(f"  {scheme:30s} {n:4d}  {status}")
+
     # --- final-round accuracy per scheme, mean +/- std across runs ---
     print(f"\nAccuracy final (ronda {NUM_ROUNDS}), media +/- desvio entre os runs:")
     final_rows = []
@@ -869,9 +947,20 @@ def section6_accuracy(eval_dfs):
 
 
 def main():
+    global RESULTS_DIR, EXECUTION_LOG_PATH, OUT_DIR, NUM_NODES
+
+    args = parse_args()
+    RESULTS_DIR = os.path.abspath(args.results_dir) if args.results_dir else os.path.join(PROJECT_ROOT, "results")
+    EXECUTION_LOG_PATH = os.path.join(RESULTS_DIR, "execution_order.log")
+    OUT_DIR = os.path.join(ANALYSIS_DIR, os.path.basename(os.path.normpath(RESULTS_DIR)))
+    os.makedirs(OUT_DIR, exist_ok=True)
+
     dfs, eval_dfs = load_all()
+    NUM_NODES = args.num_clients or detect_num_clients(dfs)
+
     print(LINE)
-    print("VALIDACAO DE RESULTADOS — thesis_fl/quickstart-pytorch/results/")
+    print(f"VALIDACAO DE RESULTADOS — {RESULTS_DIR}")
+    print(f"Clientes: {NUM_NODES} ({'via --num-clients' if args.num_clients else 'auto-detetado dos dados'})")
     print(f"Esquemas carregados (CSV principal): {sorted(dfs)}")
     print(f"Esquemas carregados (CSV _eval):     {sorted(eval_dfs)}")
     print(LINE)
