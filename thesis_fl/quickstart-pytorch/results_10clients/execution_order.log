@@ -1,0 +1,86 @@
+2026-07-26T13:10:30  CPU governor (cpu0): performance
+2026-07-26T13:10:30  run 1: scheme order = ['ML-DSA-44', 'ML-DSA-87', 'RSA-2048', 'Falcon-padded-512', 'SPHINCS+-SHA2-128s-simple', 'ECDSA-256', 'ML-DSA-65', 'no_signature']
+2026-07-26T13:10:30  [1/40] starting ML-DSA-44 run 1
+2026-07-26T13:29:01  ML-DSA-44 run 1: run_id=4030163176401911658 -> completed
+2026-07-26T13:29:16  [2/40] starting ML-DSA-87 run 1
+2026-07-26T13:47:57  ML-DSA-87 run 1: run_id=10816730975077461000 -> completed
+2026-07-26T13:48:12  [3/40] starting RSA-2048 run 1
+2026-07-26T14:07:07  RSA-2048 run 1: run_id=6581022424381653985 -> completed
+2026-07-26T14:07:22  [4/40] starting Falcon-padded-512 run 1
+2026-07-26T14:26:07  Falcon-padded-512 run 1: run_id=18176850452143939138 -> completed
+2026-07-26T14:26:22  [5/40] starting SPHINCS+-SHA2-128s-simple run 1
+2026-07-26T14:45:26  SPHINCS+-SHA2-128s-simple run 1: run_id=6968381299710568111 -> completed
+2026-07-26T14:45:41  [6/40] starting ECDSA-256 run 1
+2026-07-26T15:04:22  ECDSA-256 run 1: run_id=1756370278650823844 -> completed
+2026-07-26T15:04:37  [7/40] starting ML-DSA-65 run 1
+2026-07-26T15:23:15  ML-DSA-65 run 1: run_id=3270069296299550835 -> completed
+2026-07-26T15:23:30  [8/40] starting no_signature run 1
+2026-07-26T15:42:01  no_signature run 1: run_id=9420787750000995318 -> completed
+2026-07-26T15:42:16  run 2: scheme order = ['ML-DSA-87', 'SPHINCS+-SHA2-128s-simple', 'ML-DSA-44', 'ECDSA-256', 'RSA-2048', 'ML-DSA-65', 'Falcon-padded-512', 'no_signature']
+2026-07-26T15:42:16  [9/40] starting ML-DSA-87 run 2
+2026-07-26T16:00:57  ML-DSA-87 run 2: run_id=12330844848691543311 -> completed
+2026-07-26T16:01:12  [10/40] starting SPHINCS+-SHA2-128s-simple run 2
+2026-07-26T16:20:18  SPHINCS+-SHA2-128s-simple run 2: run_id=4265768311548392916 -> completed
+2026-07-26T16:20:33  [11/40] starting ML-DSA-44 run 2
+2026-07-26T16:39:07  ML-DSA-44 run 2: run_id=12438056704388745487 -> completed
+2026-07-26T16:39:22  [12/40] starting ECDSA-256 run 2
+2026-07-26T16:57:55  ECDSA-256 run 2: run_id=3791147933591499594 -> completed
+2026-07-26T16:58:10  [13/40] starting RSA-2048 run 2
+2026-07-26T17:17:02  RSA-2048 run 2: run_id=5418947325898572259 -> completed
+2026-07-26T17:17:17  [14/40] starting ML-DSA-65 run 2
+2026-07-26T17:35:57  ML-DSA-65 run 2: run_id=15413211867436862253 -> completed
+2026-07-26T17:36:12  [15/40] starting Falcon-padded-512 run 2
+2026-07-26T17:54:51  Falcon-padded-512 run 2: run_id=11283958146009447132 -> completed
+2026-07-26T17:55:06  [16/40] starting no_signature run 2
+2026-07-26T18:13:37  no_signature run 2: run_id=3648060478265129055 -> completed
+2026-07-26T18:13:52  run 3: scheme order = ['no_signature', 'ML-DSA-87', 'RSA-2048', 'ML-DSA-65', 'ECDSA-256', 'Falcon-padded-512', 'SPHINCS+-SHA2-128s-simple', 'ML-DSA-44']
+2026-07-26T18:13:52  [17/40] starting no_signature run 3
+2026-07-26T18:32:31  no_signature run 3: run_id=1727712474723456250 -> completed
+2026-07-26T18:32:46  [18/40] starting ML-DSA-87 run 3
+2026-07-26T18:51:27  ML-DSA-87 run 3: run_id=8717969721371225069 -> completed
+2026-07-26T18:51:42  [19/40] starting RSA-2048 run 3
+2026-07-26T19:10:34  RSA-2048 run 3: run_id=17252838596909866720 -> completed
+2026-07-26T19:10:49  [20/40] starting ML-DSA-65 run 3
+2026-07-26T19:29:14  ML-DSA-65 run 3: run_id=15985876984921243705 -> completed
+2026-07-26T19:29:29  [21/40] starting ECDSA-256 run 3
+2026-07-26T19:48:11  ECDSA-256 run 3: run_id=2090209865181767634 -> completed
+2026-07-26T19:48:26  [22/40] starting Falcon-padded-512 run 3
+2026-07-26T20:07:08  Falcon-padded-512 run 3: run_id=4774813706935696767 -> completed
+2026-07-26T20:07:23  [23/40] starting SPHINCS+-SHA2-128s-simple run 3
+2026-07-26T20:26:33  SPHINCS+-SHA2-128s-simple run 3: run_id=13082936415509198206 -> completed
+2026-07-26T20:26:48  [24/40] starting ML-DSA-44 run 3
+2026-07-26T20:45:29  ML-DSA-44 run 3: run_id=16320455271500044018 -> completed
+2026-07-26T20:45:44  run 4: scheme order = ['SPHINCS+-SHA2-128s-simple', 'ML-DSA-87', 'ECDSA-256', 'ML-DSA-65', 'ML-DSA-44', 'Falcon-padded-512', 'RSA-2048', 'no_signature']
+2026-07-26T20:45:44  [25/40] starting SPHINCS+-SHA2-128s-simple run 4
+2026-07-26T21:04:53  SPHINCS+-SHA2-128s-simple run 4: run_id=5007385444073545918 -> completed
+2026-07-26T21:05:08  [26/40] starting ML-DSA-87 run 4
+2026-07-26T21:23:38  ML-DSA-87 run 4: run_id=17768956887738871564 -> completed
+2026-07-26T21:23:53  [27/40] starting ECDSA-256 run 4
+2026-07-26T21:42:23  ECDSA-256 run 4: run_id=18408104370656061920 -> completed
+2026-07-26T21:42:38  [28/40] starting ML-DSA-65 run 4
+2026-07-26T22:01:31  ML-DSA-65 run 4: run_id=15744095923279057257 -> completed
+2026-07-26T22:01:46  [29/40] starting ML-DSA-44 run 4
+2026-07-26T22:20:27  ML-DSA-44 run 4: run_id=13742886183266221310 -> completed
+2026-07-26T22:20:42  [30/40] starting Falcon-padded-512 run 4
+2026-07-26T22:39:28  Falcon-padded-512 run 4: run_id=1993336523160298423 -> completed
+2026-07-26T22:39:43  [31/40] starting RSA-2048 run 4
+2026-07-26T22:58:46  RSA-2048 run 4: run_id=9018144307531085230 -> completed
+2026-07-26T22:59:01  [32/40] starting no_signature run 4
+2026-07-26T23:17:31  no_signature run 4: run_id=16155624542247049102 -> completed
+2026-07-26T23:17:46  run 5: scheme order = ['SPHINCS+-SHA2-128s-simple', 'ML-DSA-65', 'Falcon-padded-512', 'ML-DSA-44', 'ML-DSA-87', 'RSA-2048', 'no_signature', 'ECDSA-256']
+2026-07-26T23:17:46  [33/40] starting SPHINCS+-SHA2-128s-simple run 5
+2026-07-26T23:36:46  SPHINCS+-SHA2-128s-simple run 5: run_id=14739320347249121094 -> completed
+2026-07-26T23:37:01  [34/40] starting ML-DSA-65 run 5
+2026-07-26T23:55:32  ML-DSA-65 run 5: run_id=12645600930904720231 -> completed
+2026-07-26T23:55:47  [35/40] starting Falcon-padded-512 run 5
+2026-07-27T00:14:28  Falcon-padded-512 run 5: run_id=15690272397727716778 -> completed
+2026-07-27T00:14:43  [36/40] starting ML-DSA-44 run 5
+2026-07-27T00:33:19  ML-DSA-44 run 5: run_id=12387766476527995255 -> completed
+2026-07-27T00:33:34  [37/40] starting ML-DSA-87 run 5
+2026-07-27T00:52:22  ML-DSA-87 run 5: run_id=15571340000694235695 -> completed
+2026-07-27T00:52:37  [38/40] starting RSA-2048 run 5
+2026-07-27T01:11:44  RSA-2048 run 5: run_id=9768014623277812740 -> completed
+2026-07-27T01:11:59  [39/40] starting no_signature run 5
+2026-07-27T01:30:38  no_signature run 5: run_id=1843573231773854624 -> completed
+2026-07-27T01:30:53  [40/40] starting ECDSA-256 run 5
+2026-07-27T01:49:31  ECDSA-256 run 5: run_id=11475105308190114146 -> completed
