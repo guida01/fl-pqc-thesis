@@ -78,8 +78,8 @@ def train_fn(msg: Message, context: Context):
     content = RecordDict({
         "arrays": ArrayRecord(model.state_dict()),
         "signature": ConfigRecord({
-            "signature":  signature.hex(),
-            "public_key": public_key.hex(),
+            "signature":  signature,
+            "public_key": public_key,
             "scheme":     scheme,
         }),
         "metrics": MetricRecord({

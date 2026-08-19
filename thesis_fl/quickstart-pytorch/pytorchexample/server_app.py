@@ -62,8 +62,8 @@ class SignedFedAvg(FedAvg):
                 continue
 
             sig_record = reply.content["signature"]
-            signature  = bytes.fromhex(sig_record["signature"])
-            public_key = bytes.fromhex(sig_record["public_key"])
+            signature  = sig_record["signature"]
+            public_key = sig_record["public_key"]
 
             # Always extract state_dict — needed for NaN check and payload reconstruction
             state_dict = reply.content["arrays"].to_torch_state_dict()
