@@ -34,7 +34,7 @@ SCHEMES = [
     "ML-DSA-65",
     "ML-DSA-87",
     "Falcon-padded-512",
-    "SPHINCS+-SHA2-128s-simple",
+    "SLH_DSA_PURE_SHA2_128S",
 ]
 
 LABELS = {
@@ -45,7 +45,7 @@ LABELS = {
     "ML-DSA-65":                 "ML-DSA-65",
     "ML-DSA-87":                 "ML-DSA-87",
     "Falcon-padded-512":         "Falcon-512",
-    "SPHINCS+-SHA2-128s-simple": "SPHINCS+",
+    "SLH_DSA_PURE_SHA2_128S": "SLH-DSA",
 }
 
 COLORS = {
@@ -56,7 +56,7 @@ COLORS = {
     "ML-DSA-65":                 "#0F6E56",
     "ML-DSA-87":                 "#085041",
     "Falcon-padded-512":         "#185FA5",
-    "SPHINCS+-SHA2-128s-simple": "#BA7517",
+    "SLH_DSA_PURE_SHA2_128S": "#BA7517",
 }
 
 CLASSICAL = {"RSA-2048", "ECDSA-256"}

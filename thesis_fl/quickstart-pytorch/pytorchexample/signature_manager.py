@@ -12,7 +12,8 @@ class SignatureManager:
         "ML-DSA-65",
         "ML-DSA-87",
         "Falcon-padded-512",
-        "SPHINCS+-SHA2-128s-simple"]
+        "SLH_DSA_PURE_SHA2_128S",
+    ]
 
     # Classical schemes — baseline for comparison
     CLASSICAL_SCHEMES = ["RSA-2048", "ECDSA-256"]

@@ -39,10 +39,10 @@ WARMUP = 10
 DEFAULT_REPS = 1000
 BENCH_ROUND = 1
 BENCH_NODE_ID = 1001
-# RSA-2048 keygen and SPHINCS+-SHA2-128s-simple sign are slow enough that
+# RSA-2048 keygen and SLH_DSA_PURE_SHA2_128S signing are slow enough that
 # 1000 reps would blow the ~15 min budget; both use fewer reps for ALL
 # three operations, per the task spec.
-SLOW_SCHEMES = {"SPHINCS+-SHA2-128s-simple", "RSA-2048"}
+SLOW_SCHEMES = {"SLH_DSA_PURE_SHA2_128S", "RSA-2048"}
 SLOW_REPS = 100
 
 OUT_DIR = os.path.dirname(os.path.abspath(__file__))

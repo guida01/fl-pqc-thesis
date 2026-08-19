@@ -117,7 +117,7 @@ def test_t3_tampered_signature_rejected(base_case):
 #   ECDSA-256                    -> returns False (caught internally, signature_manager.py:103-108)
 #   ML-DSA-44 / ML-DSA-65 / ML-DSA-87   -> returns False (oqs.Signature.verify rejects malformed length)
 #   Falcon-padded-512             -> returns False (oqs.Signature.verify rejects malformed length)
-#   SPHINCS+-SHA2-128s-simple     -> returns False (oqs.Signature.verify rejects malformed length)
+#   SLH_DSA_PURE_SHA2_128S     -> returns False (oqs.Signature.verify rejects malformed length)
 def test_t4_truncated_signature_rejected(base_case):
     truncated = base_case["signature"][:-1]
     assert_never_valid(
@@ -164,7 +164,7 @@ def test_t7_wrong_node_rejected(base_case):
 #   ECDSA-256                    -> returns False (caught internally, signature_manager.py:103-108)
 #   ML-DSA-44 / ML-DSA-65 / ML-DSA-87   -> returns False (oqs.Signature.verify rejects zero-length signature)
 #   Falcon-padded-512             -> returns False (oqs.Signature.verify rejects zero-length signature)
-#   SPHINCS+-SHA2-128s-simple     -> returns False (oqs.Signature.verify rejects zero-length signature)
+#   SLH_DSA_PURE_SHA2_128S     -> returns False (oqs.Signature.verify rejects zero-length signature)
 def test_t8_empty_signature_rejected(base_case):
     assert_never_valid(
         base_case["scheme"], base_case["payload"],

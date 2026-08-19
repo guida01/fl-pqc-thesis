@@ -18,7 +18,7 @@ SCHEMES = [
     "ML-DSA-65",
     "ML-DSA-87",
     "Falcon-padded-512",
-    "SPHINCS+-SHA2-128s-simple",
+    "SLH_DSA_PURE_SHA2_128S",
     "RSA-2048",
     "ECDSA-256",
 ]

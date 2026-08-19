@@ -50,12 +50,12 @@ EXECUTION_ORDER = [
     "ML-DSA-65",
     "ML-DSA-87",
     "Falcon-padded-512",
-    "SPHINCS+-SHA2-128s-simple",
+    "SLH_DSA_PURE_SHA2_128S",
     "RSA-2048",
     "ECDSA-256",
 ]
 
-PQC_SCHEMES = ["ML-DSA-44", "ML-DSA-65", "ML-DSA-87", "Falcon-padded-512", "SPHINCS+-SHA2-128s-simple"]
+PQC_SCHEMES = ["ML-DSA-44", "ML-DSA-65", "ML-DSA-87", "Falcon-padded-512", "SLH_DSA_PURE_SHA2_128S"]
 CLASSICAL_SCHEMES = ["RSA-2048", "ECDSA-256"]
 SIGNED_SCHEMES = PQC_SCHEMES + CLASSICAL_SCHEMES  # excludes no_signature
 
