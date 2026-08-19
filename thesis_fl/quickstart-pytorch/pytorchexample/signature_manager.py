@@ -1,12 +1,12 @@
 import oqs
-import time 
+import time
 import hashlib
 from cryptography.hazmat.primitives.asymmetric import rsa, ec, padding, utils
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.backends import default_backend
 
 class SignatureManager:
-    
+
     # NIST-standardized PQC schemes - handled via liboqs
     PQC_SCHEMES = [
         "ML-DSA-44",
@@ -14,14 +14,19 @@ class SignatureManager:
         "ML-DSA-87",
         "Falcon-padded-512",
         "SPHINCS+-SHA2-128s-simple"]
-    
+
     # Classical schemes — baseline for comparison
     CLASSICAL_SCHEMES = ["RSA-2048", "ECDSA-256"]
 
-    def __init__(self, scheme: str):
+    def __init__(self, scheme: str, generate_keypair: bool = True):
         self.scheme = scheme
         self.public_key_bytes = None
-        self._keygen()
+        self.keygen_time = 0.0
+
+        # Signing requires a private/public key pair, but verification only
+        # needs the public key supplied by the caller.
+        if generate_keypair:
+            self._keygen()
 
     def _keygen(self):
         start = time.perf_counter()
@@ -30,7 +35,7 @@ class SignatureManager:
             # generate_keypair() returns the public key and stores the private key internally
             self._signer = oqs.Signature(self.scheme)
             self.public_key_bytes = self._signer.generate_keypair()
-        
+
         elif self.scheme == "RSA-2048":
             # exponent 65537 is standard — Fermat prime, efficient and secure
             self._private_key = rsa.generate_private_key(
@@ -57,6 +62,12 @@ class SignatureManager:
         self.keygen_time = time.perf_counter() - start
 
     def sign(self, data: bytes):
+        if self.public_key_bytes is None:
+            raise RuntimeError(
+                "Cannot sign with a verifier-only SignatureManager; "
+                "construct it with generate_keypair=True."
+            )
+
         # Pre-hash outside the timing window so only the crypto primitive is measured
         digest = hashlib.sha256(data).digest()
         start = time.perf_counter()
@@ -111,4 +122,3 @@ class SignatureManager:
         return is_valid, verify_time
 
 
-        

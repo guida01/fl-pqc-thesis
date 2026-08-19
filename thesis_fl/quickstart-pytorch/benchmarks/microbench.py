@@ -18,11 +18,10 @@ every repetition, so `sign()`/`verify()` always hash down to the exact same
 32-byte SHA-256 digest — comparable in kind to the payloads signed in the
 main FL experiment.
 
-verify() is benchmarked via a *fresh* SignatureManager(scheme) per
-repetition, mirroring server_app.py:61 (`SignatureManager(self.scheme)
-.verify(...)`) exactly, so the measured verify_time is comparable to what
-results/*.csv records (object construction — including an unused keygen for
-RSA/ECDSA — happens outside the timed window either way).
+verify() is benchmarked via a fresh verifier-only SignatureManager per
+repetition, mirroring the corrected server path. No unrelated signing key
+pair is generated before verification. The internal verify_time window is
+unchanged, so this still measures the verification primitive itself.
 """
 
 import csv
@@ -109,10 +108,15 @@ def bench_sign(mgr: SignatureManager, data: bytes, n_reps: int):
 
 def bench_verify(scheme: str, data: bytes, signature: bytes, public_key: bytes, n_reps: int):
     for _ in range(WARMUP):
-        SignatureManager(scheme).verify(data, signature, public_key)
+        SignatureManager(
+            scheme, generate_keypair=False
+        ).verify(data, signature, public_key)
+
     samples = []
     for _ in range(n_reps):
-        _, verify_time = SignatureManager(scheme).verify(data, signature, public_key)
+        _, verify_time = SignatureManager(
+            scheme, generate_keypair=False
+        ).verify(data, signature, public_key)
         samples.append(verify_time)
     return samples
 

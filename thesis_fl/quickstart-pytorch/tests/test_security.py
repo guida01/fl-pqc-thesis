@@ -41,11 +41,9 @@ def make_payload(state_dict, server_round: int, node_id: int) -> bytes:
 
 
 def do_verify(scheme: str, payload: bytes, signature: bytes, public_key: bytes):
-    """Exact replica of the verification call in server_app.py:61-63 —
-    a fresh SignatureManager is constructed for verification, same as
-    production (the server never reuses the client's signer object)."""
-    return SignatureManager(scheme).verify(payload, signature, public_key)
-
+    """Replica of the verifier-only path used by the server.
+    Verification must not generate an unrelated signing key pair."""
+    return SignatureManager(scheme, generate_keypair=False).verify(payload, signature, public_key)
 
 def assert_never_valid(scheme, payload, signature, public_key):
     """For inputs a backend may legitimately reject by raising instead of
@@ -61,7 +59,7 @@ def assert_never_valid(scheme, payload, signature, public_key):
 @pytest.fixture(scope="module", params=ALL_SCHEMES, ids=ALL_SCHEMES)
 def base_case(request):
     """One (scheme, signed payload) fixture, built once per scheme and
-    reused across all 8 tests below to avoid redundant keygen/sign calls."""
+    reused across all 9 tests below to avoid redundant keygen/sign calls."""
     scheme = request.param
     torch.manual_seed(0)
     state_dict = CIFAR10CNN().state_dict()
@@ -172,3 +170,26 @@ def test_t8_empty_signature_rejected(base_case):
         base_case["scheme"], base_case["payload"],
         b"", base_case["public_key"],
     )
+
+#T9 - verifier-only manager must not generat a signing key pair
+def test_t9_verifier_only_manager(base_case):
+    verifier = SignatureManager(
+        base_case["scheme"],
+        generate_keypair=False,
+    )
+
+    # No local key pair was generated
+    assert verifier.public_key_bytes is None
+    assert verifier.keygen_time == 0.0
+
+    # A verifier-only manager must not be able to sign.
+    with pytest.raises(RuntimeError, match="verifier-only"):
+        verifier.sign(base_case["payload"])
+
+    # It must still verify using the client's supplied public key.
+    is_valid, _ = verifier.verify(
+        base_case["payload"],
+        base_case["signature"],
+        base_case["public_key"],
+    )
+    assert is_valid is True

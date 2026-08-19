@@ -77,9 +77,9 @@ class SignedFedAvg(FedAvg):
                     + server_round.to_bytes(4, "big")
                     + node_id.to_bytes(8, "big")
                 )
-                is_valid, verify_time = SignatureManager(self.scheme).verify(
-                    payload, signature, public_key
-                )
+                is_valid, verify_time = SignatureManager(
+                    self.scheme, generate_keypair=False
+                ).verify(payload, signature, public_key)
 
             # NaN weight check — prevent FedAvg poisoning by a diverged client
             has_nan = any(torch.isnan(v).any() for v in state_dict.values())
