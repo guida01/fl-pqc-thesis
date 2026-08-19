@@ -1,27 +1,23 @@
-"""Isolated microbenchmark of the 7 signature-scheme primitives.
+"""Isolated microbenchmark of the configured signature schemes.
 
-Single process, no Flower, no Ray, no contention: the results/ CSV timings
-were measured with 5 simulated clients competing for 4 physical cores, so
-they capture cost *under contention*, not per-device cost. This script
-measures keygen/sign/verify in isolation, one scheme at a time, to give a
-contention-free reference point.
+Single process, no Flower, no Ray, no client contention. The FL campaign
+timings are collected while simulated clients share host resources; this
+benchmark provides a contention-free reference.
 
-Reuses `SignatureManager.sign()` / `.verify()` / `_keygen()` exactly as
-defined in pytorchexample/signature_manager.py — no timing logic is
-reimplemented here. Their internal windows already do SHA-256 hashing
-*outside* `time.perf_counter()`; this script only decides *what* gets
-passed in and how many times, never how the clock is used.
+The benchmark reuses the timing windows implemented by SignatureManager.
+Key generation is measured separately. sign_time measures the backend
+signing call over the full serialized payload. verify_time measures the
+backend verification call over the full serialized payload; verifier and
+public-key setup remain outside that internal timing window.
 
-The same fixed payload (weights_to_bytes() of one freshly-initialized
-CIFAR10CNN(), deterministic via a fixed torch seed) is signed/verified on
-every repetition, so `sign()`/`verify()` always hash down to the exact same
-32-byte SHA-256 digest — comparable in kind to the payloads signed in the
-main FL experiment.
+The fixed benchmark payload mirrors the message signed in the FL pipeline:
 
-verify() is benchmarked via a fresh verifier-only SignatureManager per
-repetition, mirroring the corrected server path. No unrelated signing key
-pair is generated before verification. The internal verify_time window is
-unchanged, so this still measures the verification primitive itself.
+    weights_to_bytes(state_dict)
+    + server_round.to_bytes(4, "big")
+    + node_id.to_bytes(8, "big")
+
+A fixed model seed, round, and node ID make the payload identical across
+repetitions and schemes.
 """
 
 import csv
@@ -41,6 +37,8 @@ ALL_SCHEMES = SignatureManager.PQC_SCHEMES + SignatureManager.CLASSICAL_SCHEMES
 
 WARMUP = 10
 DEFAULT_REPS = 1000
+BENCH_ROUND = 1
+BENCH_NODE_ID = 1001
 # RSA-2048 keygen and SPHINCS+-SHA2-128s-simple sign are slow enough that
 # 1000 reps would blow the ~15 min budget; both use fewer reps for ALL
 # three operations, per the task spec.
@@ -123,10 +121,18 @@ def bench_verify(scheme: str, data: bytes, signature: bytes, public_key: bytes, 
 
 def main():
     torch.manual_seed(42)
-    data = weights_to_bytes(CIFAR10CNN().state_dict())
+    state_dict = CIFAR10CNN().state_dict()
+    data = (
+        weights_to_bytes(state_dict)
+        + BENCH_ROUND.to_bytes(4, "big")
+        + BENCH_NODE_ID.to_bytes(8, "big")
+        )
     governor = read_cpu_governor()
 
-    print(f"Fixed payload: {len(data)} bytes (weights_to_bytes of one CIFAR10CNN())")
+    print(
+        f"Fixed serialized update payload: {len(data)} bytes "
+        f"(weights + round + node_id)"
+    )
     print(f"CPU governor: {governor}")
     print(f"Schemes: {ALL_SCHEMES}")
 

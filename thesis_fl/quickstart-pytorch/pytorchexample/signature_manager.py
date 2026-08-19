@@ -1,7 +1,6 @@
 import oqs
 import time
-import hashlib
-from cryptography.hazmat.primitives.asymmetric import rsa, ec, padding, utils
+from cryptography.hazmat.primitives.asymmetric import rsa, ec, padding
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.backends import default_backend
 
@@ -67,33 +66,31 @@ class SignatureManager:
                 "Cannot sign with a verifier-only SignatureManager; "
                 "construct it with generate_keypair=True."
             )
-
-        # Pre-hash outside the timing window so only the crypto primitive is measured
-        digest = hashlib.sha256(data).digest()
         start = time.perf_counter()
 
         if self.scheme in self.PQC_SCHEMES:
-            signature = self._signer.sign(digest)
+            signature = self._signer.sign(data)
 
         elif self.scheme == "RSA-2048":
-            # Prehashed: library signs digest directly without re-hashing
             signature = self._private_key.sign(
-                digest, padding.PKCS1v15(), utils.Prehashed(hashes.SHA256())
+                data,
+                padding.PKCS1v15(),
+                hashes.SHA256(),
             )
 
         elif self.scheme == "ECDSA-256":
             signature = self._private_key.sign(
-                digest, ec.ECDSA(utils.Prehashed(hashes.SHA256()))
+                data,
+                ec.ECDSA(hashes.SHA256()),
             )
-
         sign_time = time.perf_counter() - start
         return signature, sign_time
 
     def verify(self, data: bytes, signature: bytes, public_key_bytes: bytes):
         from cryptography.hazmat.primitives.serialization import load_der_public_key
-        digest = hashlib.sha256(data).digest()
-
-        # Object setup outside timing window — only the verification primitive is measured
+        # Verifier/public-key setup is kept outside the timing window.
+        # verify_time measures the backend verification call over the full payload,
+        # including message processing performed by the signature implementation.
         if self.scheme in self.PQC_SCHEMES:
             verifier = oqs.Signature(self.scheme)
         elif self.scheme in ("RSA-2048", "ECDSA-256"):
@@ -102,23 +99,29 @@ class SignatureManager:
         start = time.perf_counter()
 
         if self.scheme in self.PQC_SCHEMES:
-            is_valid = verifier.verify(digest, signature, public_key_bytes)
-
+            is_valid = verifier.verify(data, signature, public_key_bytes)
         elif self.scheme == "RSA-2048":
             try:
-                pub.verify(signature, digest, padding.PKCS1v15(), utils.Prehashed(hashes.SHA256()))
+                pub.verify(
+                    signature,
+                    data,
+                    padding.PKCS1v15(),
+                    hashes.SHA256(),
+                )
                 is_valid = True
             except Exception:
                 is_valid = False
 
         elif self.scheme == "ECDSA-256":
             try:
-                pub.verify(signature, digest, ec.ECDSA(utils.Prehashed(hashes.SHA256())))
+                pub.verify(
+                    signature,
+                    data,
+                    ec.ECDSA(hashes.SHA256()),
+                )
                 is_valid = True
             except Exception:
                 is_valid = False
 
         verify_time = time.perf_counter() - start
         return is_valid, verify_time
-
-
