@@ -600,173 +600,380 @@ def section3_temporal_drift(dfs):
 # ─────────────────────────────────────────────────────────────────────────
 
 def section4_communication_cost(dfs):
-    section_header("4. MODELO DE CUSTO DE COMUNICACAO")
+    section_header("4. MODELO DE OVERHEAD DE METADATA CRIPTOGRAFICA")
 
     rows = []
+
     for scheme in SIGNED_SCHEMES:
         if scheme not in dfs:
             continue
+
         df = dfs[scheme]
+
         sig = df["sig_size"].astype(float)
         pk = df["pubkey_size"].astype(float)
-        payload = df["payload_size"].astype(float)
+        payload = df["signed_payload_size"].astype(float)
 
-        overhead = sig + pk
-        overhead_no_pk = sig
-        rel_overhead = overhead / payload
-        rel_overhead_no_pk = overhead_no_pk / payload
+        metadata = sig + pk
+        signature_only = sig
+
+        relative_metadata = metadata / payload
+        relative_signature_only = signature_only / payload
 
         rows.append({
             "scheme": scheme,
             "sig_size_mean": sig.mean(),
             "pubkey_size_mean": pk.mean(),
-            "payload_size_mean": payload.mean(),
-            "overhead_per_update_bytes": overhead.mean(),
-            "relative_overhead_pct": 100 * rel_overhead.mean(),
-            "overhead_per_update_no_pki_bytes": overhead_no_pk.mean(),
-            "relative_overhead_no_pki_pct": 100 * rel_overhead_no_pk.mean(),
+            "signed_payload_size_mean": payload.mean(),
+            "metadata_per_update_bytes": metadata.mean(),
+            "relative_metadata_overhead_pct":
+                100 * relative_metadata.mean(),
+            "signature_only_per_update_bytes":
+                signature_only.mean(),
+            "relative_signature_only_overhead_pct":
+                100 * relative_signature_only.mean(),
         })
 
     cost_df = pd.DataFrame(rows)
-    print(f"{'scheme':30s} {'overhead/upd (B)':>16s} {'rel.ovh %':>10s} {'ovh sem PKI (B)':>16s} {'rel.ovh sem PKI %':>18s}")
-    for _, r in cost_df.iterrows():
-        print(f"{r['scheme']:30s} {r['overhead_per_update_bytes']:16.1f} {r['relative_overhead_pct']:10.4f} "
-              f"{r['overhead_per_update_no_pki_bytes']:16.1f} {r['relative_overhead_no_pki_pct']:18.4f}")
 
-    # N, T cancellation argument
     print(
-        "\nCancelamento de N (clientes) e T (rondas) no racio de overhead relativo:\n"
-        "  overhead cumulativo (bytes) ao longo do treino = N x T x (sig_size + pubkey_size)\n"
-        "  payload cumulativo (bytes)  ao longo do treino = N x T x payload_size\n"
-        "  overhead relativo cumulativo = [N x T x (sig_size+pubkey_size)] / [N x T x payload_size]\n"
-        "                                = (sig_size + pubkey_size) / payload_size\n"
-        "  -> N e T aparecem em numerador e denominador com o MESMO fator "
-        "e cancelam-se algebricamente.\n"
-        "  Confirmado nos dados: relative_overhead_pct (medido por LINHA, "
-        "ou seja por 1 cliente em 1 ronda) e numericamente identico ao "
-        "racio agregado sobre todas as N x T linhas de cada esquema "
-        "(verificado abaixo)."
+        f"{'scheme':30s} "
+        f"{'metadata/upd (B)':>18s} "
+        f"{'rel.metadata %':>15s} "
+        f"{'signature only (B)':>20s} "
+        f"{'rel.sig-only %':>16s}"
     )
-    # empirical confirmation: per-row ratio mean vs aggregate-sum ratio
+
+    for _, row in cost_df.iterrows():
+        print(
+            f"{row['scheme']:30s} "
+            f"{row['metadata_per_update_bytes']:18.1f} "
+            f"{row['relative_metadata_overhead_pct']:15.4f} "
+            f"{row['signature_only_per_update_bytes']:20.1f} "
+            f"{row['relative_signature_only_overhead_pct']:16.4f}"
+        )
+
+    print(
+        "\nInterpretacao:\n"
+        "  metadata criptografica por update = sig_size + pubkey_size\n"
+        "  overhead relativo = "
+        "(sig_size + pubkey_size) / signed_payload_size\n\n"
+        "  signed_payload_size representa a serializacao deterministica "
+        "usada como mensagem da assinatura.\n"
+        "  NAO representa bytes reais na rede, tamanho de mensagem Flower, "
+        "gRPC, TLS ou framing de transporte.\n"
+        "  A variante 'signature only' representa um cenario em que a "
+        "public key nao e enviada inline em cada update; nao implica, por si "
+        "so, a existencia de uma PKI."
+    )
+
+    # --------------------------------------------------------------
+    # N/T cancellation
+    # --------------------------------------------------------------
+    print(
+        "\nCancelamento de N (clientes) e T (rondas):\n"
+        "  metadata cumulativa = "
+        "N x T x (sig_size + pubkey_size)\n"
+        "  signed payload cumulativo = "
+        "N x T x signed_payload_size\n"
+        "  racio = "
+        "[N x T x metadata] / [N x T x signed_payload_size]\n"
+        "        = metadata / signed_payload_size\n"
+        "  quando N e T multiplicam igualmente numerador e denominador."
+    )
+
     confirm_rows = []
+
     for scheme in SIGNED_SCHEMES:
         if scheme not in dfs:
             continue
+
         df = dfs[scheme]
-        per_row_mean_pct = 100 * ((df["sig_size"] + df["pubkey_size"]) / df["payload_size"]).mean()
-        agg_pct = 100 * (df["sig_size"] + df["pubkey_size"]).sum() / df["payload_size"].sum()
-        confirm_rows.append({"scheme": scheme, "per_row_mean_pct": per_row_mean_pct, "aggregate_sum_pct": agg_pct,
-                              "diff": per_row_mean_pct - agg_pct})
+
+        per_row_mean_pct = 100 * (
+            (
+                df["sig_size"]
+                + df["pubkey_size"]
+            )
+            / df["signed_payload_size"]
+        ).mean()
+
+        aggregate_sum_pct = (
+            100
+            * (
+                df["sig_size"]
+                + df["pubkey_size"]
+            ).sum()
+            / df["signed_payload_size"].sum()
+        )
+
+        confirm_rows.append({
+            "scheme": scheme,
+            "per_row_mean_pct": per_row_mean_pct,
+            "aggregate_sum_pct": aggregate_sum_pct,
+            "diff": per_row_mean_pct - aggregate_sum_pct,
+        })
+
     confirm_df = pd.DataFrame(confirm_rows)
-    print(f"\n{'scheme':30s} {'racio medio por-linha %':>24s} {'racio agregado (soma) %':>24s} {'diff':>10s}")
-    for _, r in confirm_df.iterrows():
-        print(f"{r['scheme']:30s} {r['per_row_mean_pct']:24.6f} {r['aggregate_sum_pct']:24.6f} {r['diff']:10.2e}")
+
     print(
-        "  (a pequena diferenca residual entre o racio medio-por-linha e o "
-        "racio agregado-por-soma vem da variacao de sig_size do ECDSA-256 "
-        "DER, nao de N ou T)"
+        f"\n{'scheme':30s} "
+        f"{'mean row ratio %':>20s} "
+        f"{'aggregate ratio %':>20s} "
+        f"{'diff':>12s}"
     )
 
-    # break-even model sizes
-    print("\nBreak-even: tamanho de modelo (bytes) abaixo do qual o overhead relativo ultrapassa X%:")
-    print("  M_breakeven = (sig_size + pubkey_size) / threshold")
-    breakeven_rows = []
+    for _, row in confirm_df.iterrows():
+        print(
+            f"{row['scheme']:30s} "
+            f"{row['per_row_mean_pct']:20.6f} "
+            f"{row['aggregate_sum_pct']:20.6f} "
+            f"{row['diff']:12.2e}"
+        )
+
+    print(
+        "\nPequenas diferencas entre a media dos racios por linha "
+        "e o racio das somas podem ocorrer quando o tamanho da assinatura "
+        "varia entre updates, como no ECDSA DER."
+    )
+
+    # --------------------------------------------------------------
+    # Break-even reference payload sizes
+    # --------------------------------------------------------------
+    print(
+        "\nBreak-even: tamanho de payload de referencia abaixo do qual "
+        "a metadata criptografica ultrapassa X%."
+    )
+
+    print(
+        "  payload_breakeven = metadata_bytes / threshold"
+    )
+
     thresholds = [0.01, 0.05, 0.10]
+    breakeven_rows = []
+
     for scheme in SIGNED_SCHEMES:
         if scheme not in dfs:
             continue
-        overhead_bytes = cost_df.loc[cost_df["scheme"] == scheme, "overhead_per_update_bytes"].iloc[0]
+
+        metadata_bytes = cost_df.loc[
+            cost_df["scheme"] == scheme,
+            "metadata_per_update_bytes",
+        ].iloc[0]
+
         line = [f"{scheme:30s}"]
-        for th in thresholds:
-            m_bytes = overhead_bytes / th
-            m_kib = m_bytes / 1024
-            n_params = m_bytes / 4  # float32
+
+        for threshold in thresholds:
+            payload_bytes = metadata_bytes / threshold
+            payload_kib = payload_bytes / 1024
+
             breakeven_rows.append({
-                "scheme": scheme, "threshold_pct": th * 100,
-                "model_size_bytes": m_bytes, "model_size_kib": m_kib,
-                "n_params_float32": n_params,
+                "scheme": scheme,
+                "threshold_pct": threshold * 100,
+                "reference_payload_size_bytes": payload_bytes,
+                "reference_payload_size_kib": payload_kib,
             })
-            line.append(f"{th*100:>3.0f}%: {m_kib:>9.2f} KiB ({n_params:>10,.0f} params)")
+
+            line.append(
+                f"{threshold * 100:>3.0f}%: "
+                f"{payload_kib:>9.2f} KiB"
+            )
+
         print("  " + "  |  ".join(line))
 
-    pd.DataFrame(breakeven_rows).to_csv(os.path.join(OUT_DIR, "section4_breakeven.csv"), index=False)
-    cost_df.to_csv(os.path.join(OUT_DIR, "section4_communication_cost.csv"), index=False)
-    confirm_df.to_csv(os.path.join(OUT_DIR, "section4_nt_cancellation_check.csv"), index=False)
+    pd.DataFrame(breakeven_rows).to_csv(
+        os.path.join(
+            OUT_DIR,
+            "section4_breakeven.csv",
+        ),
+        index=False,
+    )
 
+    cost_df.to_csv(
+        os.path.join(
+            OUT_DIR,
+            "section4_metadata_overhead.csv",
+        ),
+        index=False,
+    )
+
+    confirm_df.to_csv(
+        os.path.join(
+            OUT_DIR,
+            "section4_nt_cancellation_check.csv",
+        ),
+        index=False,
+    )
 
 # ─────────────────────────────────────────────────────────────────────────
 # 5. CRYPTOGRAPHIC COST PER ROUND
 # ─────────────────────────────────────────────────────────────────────────
 
 def section5_crypto_cost_per_round(dfs):
-    section_header("5. CUSTO CRIPTOGRAFICO POR RONDA")
+    section_header("5. CUSTO COMPUTACIONAL DE SEGURANCA POR RONDA")
 
     print(
-        "custo_cripto_ronda(scheme,run,round) = soma sobre os N clientes de "
-        "(keygen_time + sign_time + verify_time)\n"
-        "Comparado com soma_train_time(scheme,run,round) = soma sobre os N "
-        "clientes de train_time (mesma convencao de soma, para unidades "
-        "comparaveis).\n"
-        "Nota: nao existe medicao independente de latencia-de-ronda "
-        "(wall-clock) no pipeline (ver auditoria: nenhuma metrica de round "
-        "latency e recolhida); esta soma sobre-estima o tempo de parede se "
-        "os clientes correm em paralelo, mas preserva a razao pedida entre "
-        "custo criptografico total e custo de treino total por ronda."
+        "Duas metricas sao calculadas:\n\n"
+        "  crypto_operation_cost =\n"
+        "      keygen_time + sign_time + verify_time\n\n"
+        "  security_wrapper_cost =\n"
+        "      client_serialize_time\n"
+        "    + keygen_time\n"
+        "    + sign_time\n"
+        "    + server_serialize_time\n"
+        "    + server_verify_total_time\n\n"
+        "Os valores por ronda sao somas sobre clientes.\n"
+        "NAO representam latencia wall-clock da ronda porque os clientes "
+        "podem executar em paralelo."
     )
 
     round_rows = []
+
     for scheme, df in dfs.items():
-        per_round = df.groupby(["run", "round"]).agg(
-            crypto_cost=("keygen_time", lambda s: s.sum()),  # placeholder, recomputed below
+        grouped = df.groupby(["run", "round"])
+
+        crypto = (
+            grouped["keygen_time"].sum()
+            + grouped["sign_time"].sum()
+            + grouped["verify_time"].sum()
         )
-        g = df.groupby(["run", "round"])
-        crypto = (g["keygen_time"].sum() + g["sign_time"].sum() + g["verify_time"].sum())
-        train = g["train_time"].sum()
-        for (run, rnd), c in crypto.items():
-            t = train.loc[(run, rnd)]
+
+        wrapper = (
+            grouped["client_serialize_time"].sum()
+            + grouped["keygen_time"].sum()
+            + grouped["sign_time"].sum()
+            + grouped["server_serialize_time"].sum()
+            + grouped["server_verify_total_time"].sum()
+        )
+
+        train = grouped["train_time"].sum()
+
+        for run_round, crypto_cost in crypto.items():
+            run, rnd = run_round
+
+            wrapper_cost = wrapper.loc[run_round]
+            train_cost = train.loc[run_round]
+
+            crypto_fraction = (
+                crypto_cost / (crypto_cost + train_cost)
+                if (crypto_cost + train_cost) > 0
+                else float("nan")
+            )
+
+            wrapper_fraction = (
+                wrapper_cost / (wrapper_cost + train_cost)
+                if (wrapper_cost + train_cost) > 0
+                else float("nan")
+            )
+
             round_rows.append({
-                "scheme": scheme, "run": run, "round": rnd,
-                "crypto_cost_round": c, "train_cost_round": t,
-                "crypto_fraction": c / (c + t) if (c + t) > 0 else float("nan"),
+                "scheme": scheme,
+                "run": run,
+                "round": rnd,
+                "crypto_operation_cost_round_s":
+                    crypto_cost,
+                "security_wrapper_cost_round_s":
+                    wrapper_cost,
+                "train_cost_round_s":
+                    train_cost,
+                "crypto_fraction":
+                    crypto_fraction,
+                "security_wrapper_fraction":
+                    wrapper_fraction,
             })
 
     round_df = pd.DataFrame(round_rows)
-    round_df.to_csv(os.path.join(OUT_DIR, "section5_crypto_cost_per_round.csv"), index=False)
 
-    print(f"\n{'scheme':30s} {'crypto/round mean(s)':>20s} {'std':>10s} {'train/round mean(s)':>20s} {'crypto fraction %':>18s}")
+    round_df.to_csv(
+        os.path.join(
+            OUT_DIR,
+            "section5_security_cost_per_round.csv",
+        ),
+        index=False,
+    )
+
+    print(
+        f"\n{'scheme':30s} "
+        f"{'crypto mean(s)':>15s} "
+        f"{'wrapper mean(s)':>17s} "
+        f"{'train mean(s)':>15s} "
+        f"{'crypto %':>12s} "
+        f"{'wrapper %':>12s}"
+    )
+
     summary_rows = []
+
     for scheme in EXECUTION_ORDER:
-        sub = round_df[round_df["scheme"] == scheme]
+        sub = round_df[
+            round_df["scheme"] == scheme
+        ]
+
         if sub.empty:
             continue
-        c_mean, c_std = sub["crypto_cost_round"].mean(), sub["crypto_cost_round"].std()
-        t_mean = sub["train_cost_round"].mean()
-        frac_mean = 100 * sub["crypto_fraction"].mean()
-        print(f"{scheme:30s} {c_mean:20.5f} {c_std:10.5f} {t_mean:20.4f} {frac_mean:18.4f}")
+
+        crypto_mean = sub[
+            "crypto_operation_cost_round_s"
+        ].mean()
+
+        crypto_std = sub[
+            "crypto_operation_cost_round_s"
+        ].std()
+
+        wrapper_mean = sub[
+            "security_wrapper_cost_round_s"
+        ].mean()
+
+        wrapper_std = sub[
+            "security_wrapper_cost_round_s"
+        ].std()
+
+        train_mean = sub[
+            "train_cost_round_s"
+        ].mean()
+
+        crypto_fraction_pct = (
+            100 * sub["crypto_fraction"].mean()
+        )
+
+        wrapper_fraction_pct = (
+            100
+            * sub["security_wrapper_fraction"].mean()
+        )
+
+        print(
+            f"{scheme:30s} "
+            f"{crypto_mean:15.5f} "
+            f"{wrapper_mean:17.5f} "
+            f"{train_mean:15.4f} "
+            f"{crypto_fraction_pct:12.4f} "
+            f"{wrapper_fraction_pct:12.4f}"
+        )
+
         summary_rows.append({
-            "scheme": scheme, "crypto_cost_round_mean_s": c_mean, "crypto_cost_round_std_s": c_std,
-            "train_cost_round_mean_s": t_mean, "crypto_fraction_pct_mean": frac_mean,
+            "scheme": scheme,
+            "crypto_operation_cost_round_mean_s":
+                crypto_mean,
+            "crypto_operation_cost_round_std_s":
+                crypto_std,
+            "security_wrapper_cost_round_mean_s":
+                wrapper_mean,
+            "security_wrapper_cost_round_std_s":
+                wrapper_std,
+            "train_cost_round_mean_s":
+                train_mean,
+            "crypto_fraction_pct_mean":
+                crypto_fraction_pct,
+            "security_wrapper_fraction_pct_mean":
+                wrapper_fraction_pct,
         })
 
-    summary_df = pd.DataFrame(summary_rows)
-    summary_df.to_csv(os.path.join(OUT_DIR, "section5_crypto_cost_summary.csv"), index=False)
-
-    print("\nPor ronda (media sobre os 5 runs), esquemas mais caros primeiro (fracao criptografica media):")
-    by_round = round_df.groupby(["scheme", "round"]).agg(
-        crypto_cost_round_mean=("crypto_cost_round", "mean"),
-        crypto_fraction_mean=("crypto_fraction", "mean"),
-    ).reset_index()
-    by_round.to_csv(os.path.join(OUT_DIR, "section5_crypto_cost_by_round.csv"), index=False)
-
-    worst = summary_df.sort_values("crypto_fraction_pct_mean", ascending=False)
-    if len(worst):
-        top = worst.iloc[0]
-        best_signed = worst[worst["scheme"] != "no_signature"].sort_values("crypto_fraction_pct_mean").iloc[0] \
-            if (worst["scheme"] != "no_signature").any() else None
-        print(f"\nEsquema com maior fracao criptografica media: {top['scheme']} ({top['crypto_fraction_pct_mean']:.4f}% do custo total por ronda)")
-        if best_signed is not None:
-            print(f"Esquema assinado com MENOR fracao criptografica media: {best_signed['scheme']} ({best_signed['crypto_fraction_pct_mean']:.4f}%)")
-
+    pd.DataFrame(summary_rows).to_csv(
+        os.path.join(
+            OUT_DIR,
+            "section5_security_cost_summary.csv",
+        ),
+        index=False,
+    )
 
 # ─────────────────────────────────────────────────────────────────────────
 # 6. CENTRALIZED-EVALUATION ACCURACY, AND ORTHOGONALITY VIA ACCURACY

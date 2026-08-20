@@ -2,7 +2,7 @@
 FL-PQC thesis — results analysis
 Data: 8 schemes × 5 runs × 30 rounds × 5 clients = 750 rows/scheme
 Columns: run, round, node_id, scheme, keygen_time, sign_time, verify_time,
-         train_time, train_loss, payload_size, sig_size, pubkey_size,
+         train_time, train_loss, signed_payload_size, sig_size, pubkey_size,
          sig_valid, has_nan
 """
 
@@ -103,7 +103,7 @@ def aggregate(df):
         train_std    =("train_time",   "std"),
         sig_size     =("sig_size",     "mean"),    # mean handles ECDSA variable-length DER
         pubkey_size  =("pubkey_size",  "mean"),
-        payload_size =("payload_size", "mean"),
+        signed_payload_size =("signed_payload_size", "mean"),
         n            =("sign_time",    "count"),
     ).reset_index()
 
