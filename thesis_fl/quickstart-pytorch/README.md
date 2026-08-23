@@ -1,98 +1,30 @@
----
-tags: [quickstart, vision, fds]
-dataset: [CIFAR-10]
-framework: [torch, torchvision]
----
+# Securing Federated Learning with Post-Quantum Digital Signatures
 
-# Federated Learning with PyTorch and Flower (Quickstart Example)
+Experimental implementation for the thesis **Securing Federated Learning with Post-Quantum Digital Signatures**.
 
-This introductory example to Flower uses PyTorch, but deep knowledge of PyTorch is not necessarily required to run the example. However, it will help you understand how to adapt Flower to your use case. Running this example in itself is quite easy. This example uses [Flower Datasets](https://flower.ai/docs/datasets/) to download, partition and preprocess the CIFAR-10 dataset.
+The project integrates digital signatures into a Flower/PyTorch federated learning workflow using CIFAR-10 and evaluates cryptographic computation, serialization overhead, metadata size, and model accuracy.
 
-## Set up the project
+## Signature configurations
 
-### Fetch the app
+The final experiments evaluate eight configurations:
 
-Install Flower:
+- `no_signature`
+- `ML-DSA-44`
+- `ML-DSA-65`
+- `ML-DSA-87`
+- `Falcon-padded-512`
+- `SLH_DSA_PURE_SHA2_128S`
+- `RSA-2048`
+- `ECDSA-256`
 
-```shell
-pip install flwr
-```
+## Final OQS environment
 
-Fetch the app:
+The final experiments use:
 
-```shell
-flwr new @flwrlabs/quickstart-pytorch
-```
+- `liboqs 0.16.0`
+- `liboqs-python 0.16.0`
 
-This will create a new directory called `quickstart-pytorch` with the following structure:
-
-```shell
-quickstart-pytorch
-├── pytorchexample
-│   ├── __init__.py
-│   ├── client_app.py   # Defines your ClientApp
-│   ├── server_app.py   # Defines your ServerApp
-│   └── task.py         # Defines your model, training and data loading
-├── pyproject.toml      # Project metadata like dependencies and configs
-└── README.md
-```
-
-### Install dependencies and project
-
-Install the dependencies defined in `pyproject.toml` as well as the `pytorchexample` package.
+From `thesis_fl/quickstart-pytorch`, activate the pinned environment with:
 
 ```bash
-pip install -e .
-```
-
-## Run the project
-
-You can run your Flower project in both _simulation_ and _deployment_ mode without making changes to the code. If you are starting with Flower, we recommend you using the _simulation_ mode as it requires fewer components to be launched manually. By default, `flwr run` will make use of the Simulation Engine.
-
-### Run with the Simulation Engine
-
-> [!TIP]
-> This example runs faster when the `ClientApp`s have access to a GPU. Check the [Simulation Engine documentation](https://flower.ai/docs/framework/how-to-run-simulations.html) to learn more about Flower simulations and how to optimize them.
-
-```bash
-# Run with the default federation (CPU only)
-flwr run .  --stream
-```
-
-You can also override some of the settings for your `ClientApp` and `ServerApp` defined in `pyproject.toml`. For example:
-
-```bash
-flwr run . --run-config "num-server-rounds=5 learning-rate=0.05"  --stream
-```
-
-> [!TIP]
-> For a more detailed walk-through check our [quickstart PyTorch tutorial](https://flower.ai/docs/framework/tutorial-quickstart-pytorch.html)
-
-### CPU governor (for reproducible timing measurements)
-
-`run_all_schemes.py` reads the CPU frequency-scaling governor at startup
-(`/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor`) and warns — but
-never changes it — if it isn't `performance`. keygen/sign/verify/train
-timings can be affected by frequency scaling under other governors (e.g.
-`schedutil`, `powersave`), so for measurements you intend to report, fix it
-manually first:
-
-```bash
-# check the current governor
-cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
-
-# set it to performance on all cores (requires cpupower / root)
-sudo cpupower frequency-set -g performance
-
-# revert to the distro default (commonly "schedutil" or "ondemand") when done
-sudo cpupower frequency-set -g schedutil
-```
-
-The governor value observed at the start of each campaign run is recorded,
-timestamped, in `results/execution_order.log`.
-
-### Run with the Deployment Engine
-
-Follow this [how-to guide](https://flower.ai/docs/framework/how-to-run-flower-with-deployment-engine.html) to run the same app in this example but with Flower's Deployment Engine. After that, you might be intersted in setting up [secure TLS-enabled communications](https://flower.ai/docs/framework/how-to-enable-tls-connections.html) and [SuperNode authentication](https://flower.ai/docs/framework/how-to-authenticate-supernodes.html) in your federation.
-
-If you are already familiar with how the Deployment Engine works, you may want to learn how to run it using Docker. Check out the [Flower with Docker](https://flower.ai/docs/framework/docker/index.html) documentation.
+source scripts/activate_final_env.sh
