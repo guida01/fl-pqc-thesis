@@ -10,3 +10,6 @@
 # one-off debug/log artifacts (kept on disk, not tracked)
 Importoqs.txt
 run_log.txt
+
+# Local assistant settings
+**/.claude/

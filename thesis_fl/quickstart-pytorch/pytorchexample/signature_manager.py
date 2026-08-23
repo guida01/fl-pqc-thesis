@@ -6,7 +6,7 @@ from cryptography.hazmat.backends import default_backend
 
 class SignatureManager:
 
-    # NIST-standardized PQC schemes - handled via liboqs
+    # Post-quantum signature schemes evaluated via liboqs
     PQC_SCHEMES = [
         "ML-DSA-44",
         "ML-DSA-65",

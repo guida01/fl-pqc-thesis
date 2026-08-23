@@ -111,7 +111,7 @@ def test_t3_tampered_signature_rejected(base_case):
 
 # T4 — truncated signature (sig[:-1]) -> verify == False, or raises (never True)
 #
-# Observed behavior per scheme, measured directly against this liboqs 0.14.1 /
+# Observed behavior per scheme, measured directly against this liboqs 0.16.0 /
 # cryptography 46.0.7 install (all 7 return False cleanly; none raise):
 #   RSA-2048                     -> returns False (caught internally, signature_manager.py:96-101)
 #   ECDSA-256                    -> returns False (caught internally, signature_manager.py:103-108)
@@ -158,7 +158,7 @@ def test_t7_wrong_node_rejected(base_case):
 
 # T8 — empty signature (b"") -> verify == False, or raises (never True)
 #
-# Observed behavior per scheme, measured directly against this liboqs 0.14.1 /
+# Observed behavior per scheme, measured directly against this liboqs 0.16.0 /
 # cryptography 46.0.7 install (all 7 return False cleanly; none raise):
 #   RSA-2048                     -> returns False (caught internally, signature_manager.py:96-101)
 #   ECDSA-256                    -> returns False (caught internally, signature_manager.py:103-108)
