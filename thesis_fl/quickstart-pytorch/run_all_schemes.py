@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Final 5-client experimental campaign.
 
-Runs all 8 configurations for 5 runs and 30 federated rounds.
+Runs all 8 configurations for 10 runs and 30 federated rounds.
 Scheme order is randomized independently for each run.
 
 The runner:
@@ -44,7 +44,7 @@ PQ_SCHEMES = [
 
 EXPECTED_OQS_VERSION = "0.16.0"
 
-N_RUNS = 5
+N_RUNS = 10
 NUM_SUPERNODES = 5
 NUM_ROUNDS = 30
 

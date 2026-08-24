@@ -2,7 +2,7 @@
 """Final 10-client experimental campaign.
 
 Runs the same 8 configurations as the primary campaign,
-using 10 clients, 30 rounds and 5 independent runs.
+using 10 clients, 30 rounds and 10 independent runs.
 """
 
 import datetime
@@ -36,7 +36,7 @@ PQ_SCHEMES = [
 
 EXPECTED_OQS_VERSION = "0.16.0"
 
-N_RUNS = 5
+N_RUNS = 10
 NUM_SUPERNODES = 10
 NUM_ROUNDS = 30
 
