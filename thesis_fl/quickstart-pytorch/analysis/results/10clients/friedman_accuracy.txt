@@ -3,9 +3,9 @@ Final central accuracy: matched-run Friedman test
 Runs (n):          10
 Configurations:   8
 Degrees freedom:  7
-Chi-square:       4.73333333
-p-value:          0.69246805
-Kendall's W:      0.06761905
+Chi-square:       10.31578947
+p-value:          0.17137303
+Kendall's W:      0.14736842
 
 Global Friedman test is not significant. No post-hoc pairwise comparisons are performed.
 

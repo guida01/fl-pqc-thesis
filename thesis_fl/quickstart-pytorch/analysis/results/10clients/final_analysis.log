@@ -1,0 +1,57 @@
+==============================================================================
+VALIDATING 10-CLIENT CAMPAIGN
+==============================================================================
+no_signature            updates=3000/3000  eval=310/310  PASS
+RSA-2048                updates=3000/3000  eval=310/310  PASS
+ECDSA-256               updates=3000/3000  eval=310/310  PASS
+ML-DSA-44               updates=3000/3000  eval=310/310  PASS
+ML-DSA-65               updates=3000/3000  eval=310/310  PASS
+ML-DSA-87               updates=3000/3000  eval=310/310  PASS
+Falcon-padded-512       updates=3000/3000  eval=310/310  PASS
+SLH-DSA-SHA2-128s       updates=3000/3000  eval=310/310  PASS
+
+DATASET VALIDATION: PASS
+MATCHED ROUND-0 MODELS: PASS
+
+==============================================================================
+10-CLIENT FINAL SUMMARY
+==============================================================================
+
+Security-wrapper cost, mean ± SD across run-level means:
+  no_signature                0.0000 ±   0.0000 ms
+  RSA-2048                   81.0751 ±   1.9751 ms
+  ECDSA-256                  16.5955 ±   0.1177 ms
+  ML-DSA-44                  17.8875 ±   0.1200 ms
+  ML-DSA-65                  17.9843 ±   0.1398 ms
+  ML-DSA-87                  18.1575 ±   0.0926 ms
+  Falcon-padded-512          26.8881 ±   0.1483 ms
+  SLH-DSA-SHA2-128s         770.7519 ±   2.7828 ms
+
+Cryptographic metadata:
+  RSA-2048                  550.000 B  0.022158%
+  ECDSA-256                 161.988 B  0.006526%
+  ML-DSA-44                3732.000 B  0.150353%
+  ML-DSA-65                5261.000 B  0.211953%
+  ML-DSA-87                7219.000 B  0.290836%
+  Falcon-padded-512        1563.000 B  0.062970%
+  SLH-DSA-SHA2-128s        7888.000 B  0.317789%
+
+Final accuracy, mean ± SD:
+  no_signature            0.731370 ± 0.006066
+  RSA-2048                0.729680 ± 0.003905
+  ECDSA-256               0.731270 ± 0.004716
+  ML-DSA-44               0.731400 ± 0.005010
+  ML-DSA-65               0.733000 ± 0.003772
+  ML-DSA-87               0.732900 ± 0.006178
+  Falcon-padded-512       0.730510 ± 0.007273
+  SLH-DSA-SHA2-128s       0.731020 ± 0.005327
+
+Friedman final accuracy:
+  chi-square = 10.31578947
+  df         = 7
+  p          = 0.17137303
+  Kendall W  = 0.14736842
+
+Outputs written to: analysis/results/10clients
+
+ANALYSIS COMPLETE
