@@ -189,7 +189,7 @@ Configuration:
 ```text
 clients:        5
 server rounds:  30
-runs:           5
+runs:           10
 configurations: 8
 ```
 
@@ -214,13 +214,13 @@ results_final_5clients/
 Expected update rows per configuration:
 
 ```text
-5 runs x 30 rounds x 5 clients = 750 rows
+10 runs x 30 rounds x 5 clients = 750 rows
 ```
 
 Expected centralized-evaluation rows per configuration:
 
 ```text
-5 runs x (30 rounds + round 0) = 155 rows
+10 runs x (30 rounds + round 0) = 155 rows
 ```
 
 The execution order is recorded in:
@@ -238,7 +238,7 @@ Configuration:
 ```text
 clients:        10
 server rounds:  30
-runs:           5
+runs:           10
 configurations: 8
 ```
 
@@ -263,13 +263,13 @@ results_final_10clients/
 Expected update rows per configuration:
 
 ```text
-5 runs x 30 rounds x 10 clients = 1500 rows
+10 runs x 30 rounds x 10 clients = 1500 rows
 ```
 
 Expected centralized-evaluation rows per configuration:
 
 ```text
-5 runs x (30 rounds + round 0) = 155 rows
+10 runs x (30 rounds + round 0) = 155 rows
 ```
 
 The execution order is recorded in:
