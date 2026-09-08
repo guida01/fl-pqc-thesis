@@ -1,10 +1,15 @@
-venv/
-__pycache__/
-*.pyc
-*.pyo
-.env
-data/
-results/
-.vscode/
-.DS_Store
+**/venv/
+**/__pycache__/
+**/*.pyc
+**/data/
+**/*.fab
+**/*.pt
+**/.flwr/
+**/.ray/
 
+# one-off debug/log artifacts (kept on disk, not tracked)
+Importoqs.txt
+run_log.txt
+
+# Local assistant settings
+**/.claude/

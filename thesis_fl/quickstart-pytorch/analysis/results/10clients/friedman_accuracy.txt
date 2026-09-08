@@ -1,0 +1,12 @@
+Final central accuracy: matched-run Friedman test
+================================================
+Runs (n):          10
+Configurations:   8
+Degrees freedom:  7
+Chi-square:       10.31578947
+p-value:          0.17137303
+Kendall's W:      0.14736842
+
+Global Friedman test is not significant. No post-hoc pairwise comparisons are performed.
+
+The inferential unit is the run. Client-update rows are not treated as independent replicates.

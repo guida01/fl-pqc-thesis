@@ -1,0 +1,15 @@
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+data/
+*.fab
+*.pt
+.flwr/
+.ray/
+run_log.txt
+*.code-workspace
+
+# Final experimental raw results
+results_final_5clients/
+results_final_10clients/
