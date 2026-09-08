@@ -75,7 +75,6 @@ pyparsing==3.3.2
 pytest==9.1.1
 python-dateutil==2.9.0.post0
 PyYAML==6.0.3
--e git+ssh://git@github.com/guida01/fl-pqc-thesis.git@85ae44c6c87dfbd511f13a8c10e28cfe78048ca6#egg=quickstart_pytorch&subdirectory=thesis_fl/quickstart-pytorch
 ray==2.51.1
 referencing==0.37.0
 requests==2.34.0
