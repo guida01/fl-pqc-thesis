@@ -11,5 +11,7 @@ run_log.txt
 *.code-workspace
 
 # Final experimental raw results
-results_final_5clients/
-results_final_10clients/
+
+# Local recovery / diagnostic outputs
+results_final_*/resume_runs*.log
+analysis/results_final_*/

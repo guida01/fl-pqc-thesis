@@ -1,6 +1,6 @@
-# Securing Federated Learning with Post-Quantum Digital Signatures
+# Securing Federated Model Updates with Post-Quantum Digital Signatures
 
-Reproducibility artefact for the MSc thesis **Securing Federated Learning with Post-Quantum Digital Signatures**.
+Reproducibility artefact for the MSc thesis **Securing Federated Model Updates with Post-Quantum Digital Signatures**.
 
 This repository contains the implementation, experimental campaign scripts, analysis pipeline, derived results, and figures used to evaluate classical and post-quantum digital signatures in a Flower/PyTorch federated learning workflow.
 
@@ -47,7 +47,17 @@ Thesis figures are available under:
 
 `thesis_fl/quickstart-pytorch/analysis/figures/`
 
-Raw experimental measurements are provided with the final GitHub release.
+Raw experimental measurements are available under:
+
+`thesis_fl/quickstart-pytorch/results_final_5clients/`
+
+and
+
+`thesis_fl/quickstart-pytorch/results_final_10clients/`
+
+Derived analysis outputs are available under:
+
+`thesis_fl/quickstart-pytorch/analysis/results/`
 
 ## Reproduction
 

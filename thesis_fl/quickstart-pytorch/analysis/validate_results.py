@@ -37,7 +37,7 @@ OUT_DIR = os.path.join(ANALYSIS_DIR, "results")
 NUM_NODES = None
 
 NUM_ROUNDS = 30
-NUM_RUNS = 5
+NUM_RUNS = 10
 
 # Fixed display order used only for cosmetic print ordering across
 # sections (2, 5, 6) — NOT the chronological execution order. The
@@ -478,7 +478,7 @@ def section3_temporal_drift(dfs):
         f"conhecida (1-{total}).\n"
         "A campanha usa ordem ALEATORIZADA por run "
         "(random.Random(1000+run_num).shuffle em run_all_schemes.py): "
-        "cada uma das 5 sequencias de 8 esquemas foi baralhada de forma "
+        "cada run registado no log corresponde a uma sequencia de 8 esquemas, baralhada de forma "
         "independente, por isso cada esquema ocupa uma posicao diferente "
         "em cada run. Isto separa por DESENHO o efeito de posicao "
         "(deriva termica/de frequencia ao longo da campanha) do efeito "
@@ -532,7 +532,7 @@ def section3_temporal_drift(dfs):
     # --- per-scheme correlation: n=5 points each (low power), reported anyway ---
     print(
         "\nCorrelacao POR ESQUEMA entre posicao e train_time medio "
-        "(n=5 pontos por esquema — poder estatistico baixo, mas cada "
+        "(o numero de pontos disponiveis e indicado em cada linha, mas cada "
         "esquema ocupa posicoes espalhadas pela campanha, nao um bloco):"
     )
     per_scheme_rows = []

@@ -1,6 +1,6 @@
-# Securing Federated Learning with Post-Quantum Digital Signatures
+# Securing Federated Model Updates with Post-Quantum Digital Signatures
 
-Experimental implementation for the thesis **Securing Federated Learning with Post-Quantum Digital Signatures**.
+Experimental implementation for the thesis **Securing Federated Model Updates with Post-Quantum Digital Signatures**.
 
 The project integrates digital signatures into a Flower/PyTorch federated learning workflow using CIFAR-10.
 
@@ -214,16 +214,16 @@ results_final_5clients/
 Expected update rows per configuration:
 
 ```text
-10 runs x 30 rounds x 5 clients = 750 rows
+10 runs x 30 rounds x 5 clients = 1500 rows
 ```
 
 Expected centralized-evaluation rows per configuration:
 
 ```text
-10 runs x (30 rounds + round 0) = 155 rows
+10 runs x (30 rounds + round 0) = 310 rows
 ```
 
-The execution order is recorded in:
+The available execution-order log is stored in:
 
 ```text
 results_final_5clients/execution_order.log
@@ -263,16 +263,16 @@ results_final_10clients/
 Expected update rows per configuration:
 
 ```text
-10 runs x 30 rounds x 10 clients = 1500 rows
+10 runs x 30 rounds x 10 clients = 3000 rows
 ```
 
 Expected centralized-evaluation rows per configuration:
 
 ```text
-10 runs x (30 rounds + round 0) = 155 rows
+10 runs x (30 rounds + round 0) = 310 rows
 ```
 
-The execution order is recorded in:
+The available execution-order log is stored in:
 
 ```text
 results_final_10clients/execution_order.log
