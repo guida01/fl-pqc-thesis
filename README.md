@@ -55,10 +55,6 @@ and
 
 `thesis_fl/quickstart-pytorch/results_final_10clients/`
 
-Derived analysis outputs are available under:
-
-`thesis_fl/quickstart-pytorch/analysis/results/`
-
 ## Reproduction
 
 See `thesis_fl/quickstart-pytorch/README.md` for environment setup, experimental execution, validation, and analysis instructions.
